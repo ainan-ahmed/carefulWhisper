@@ -14,19 +14,38 @@ It is built with **FastAPI** + **faster-whisper**, with global hotkey and text o
 
 ## 🚀 Quick Start
 
-### Option A: Uvicorn (Recommended)
+### Option A: Script Entrypoint (Recommended)
+
+```bash
+uv sync
+uv run carefulwhisper
+```
+
+With custom options:
+
+```bash
+uv run carefulwhisper --host 127.0.0.1 --port 7331 --reload
+```
+
+### Option B: Uvicorn directly
 
 ```bash
 uv sync
 uv run uvicorn backend.main:app --port 7331 --reload
 ```
 
-### Option B: Module Entrypoint
+### Option C: Module Entrypoint
 
 ```bash
 uv sync
 uv run python -m backend.main --port 7331 --reload
 ```
+
+> **Wayland users**: `ydotool` requires its daemon to be running before starting the app.
+> ```bash
+> systemctl --user enable --now ydotool  # permanent
+> # or: ydotoold &                        # current session only
+> ```
 
 ### Health Check
 
