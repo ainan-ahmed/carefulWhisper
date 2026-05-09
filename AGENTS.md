@@ -2,15 +2,14 @@
 
 ## Reality checks first
 
-- `README.md` is stale (still says "scaffold only"); trust code in `backend/` and `pyproject.toml`.
 - No CI, pre-commit, lint, mypy, or pytest config is present; do targeted runtime/syntax checks.
+- `README.md` is now accurate; trust code in `backend/` and `pyproject.toml` for implementation details.
 
 ## Commands that actually work
 
 - Sync dependencies: `uv sync`
 - Run dev server: `uv run uvicorn backend.main:app --port 7331 --reload`
-- Alternative entrypoint: `uv run python -m backend.main --port 7331 --reload`
-- Do **not** assume `uv run carefulwhisper` works (no `[project.scripts]` entry in `pyproject.toml`).
+- CLI entrypoint: `uv run carefulwhisper` (wired to `backend.main:start`)
 - Fast sanity check: `uv run python -m py_compile backend/main.py backend/routers/transcribe.py backend/hotkey.py`
 - Health check: `curl http://127.0.0.1:7331/health`
 
