@@ -53,6 +53,23 @@ class PostProcessConfig:
     capitalize_sentences: bool = True
     custom_vocab: list[str] = field(default_factory=list)
     substitutions: dict[str, str] = field(default_factory=dict)
+    remove_fillers: bool = False
+    filler_words: list[str] = field(
+        default_factory=lambda: [
+            "um",
+            "uh",
+            "er",
+            "ah",
+            "hmm",
+            "mm",
+            "mhm",
+            "uhh",
+            "umm",
+        ]
+    )
+    format_numbers: bool = False
+    fix_unicode: bool = False
+    handle_self_corrections: bool = False
 
 
 @dataclass
@@ -153,6 +170,11 @@ def write_default_config(path: Path = CONFIG_PATH) -> None:
             "capitalize_sentences": cfg.postprocess.capitalize_sentences,
             "custom_vocab": cfg.postprocess.custom_vocab,
             "substitutions": cfg.postprocess.substitutions,
+            "remove_fillers": cfg.postprocess.remove_fillers,
+            "filler_words": cfg.postprocess.filler_words,
+            "format_numbers": cfg.postprocess.format_numbers,
+            "fix_unicode": cfg.postprocess.fix_unicode,
+            "handle_self_corrections": cfg.postprocess.handle_self_corrections,
         },
     }
     with open(path, "wb") as f:

@@ -60,6 +60,7 @@ curl http://127.0.0.1:7331/health
 - Global hotkey dictation flow (`/transcribe/start` + `/transcribe/stop`)
 - File and raw transcription endpoints (`/transcribe/file`, `/transcribe/raw`)
 - Output auto-selection (`ydotool`/`xdotool`/clipboard fallback)
+- Robust text postprocessing (filler removal, number formatting via `text2num`, unicode fixing via `ftfy`, smart punctuation/capitalization that preserves domains)
 - History, audio device listing, and settings endpoints
 
 ---

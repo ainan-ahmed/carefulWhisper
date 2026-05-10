@@ -12,6 +12,7 @@
 - CLI entrypoint: `uv run carefulwhisper` (wired to `backend.main:start`)
 - Fast sanity check: `uv run python -m py_compile backend/main.py backend/routers/transcribe.py backend/hotkey.py`
 - Health check: `curl http://127.0.0.1:7331/health`
+- Test postprocessing features: `uv run python test_postprocess.py [wav_file_path]`
 
 ## Core execution flow
 
@@ -38,6 +39,7 @@
 ## Dependency notes (currently used by runtime code)
 
 - Audio/file/transcribe/output/hotkey paths rely on: `soundfile`, `resampy`, `pyperclip`, `pynput`, `evdev`.
+- Postprocessing relies on: `text2num` (number formatting) and `ftfy` (unicode fixes).
 
 ## Keep docs aligned
 

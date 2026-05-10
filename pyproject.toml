@@ -21,6 +21,8 @@ dependencies = [
     "pyperclip>=1.9.0",
     "pynput>=1.7.7",
     "evdev>=1.6.0",
+    "text2num>=3.0.0",
+    "ftfy>=6.0.0",
 ]
 
 [tool.uv]
