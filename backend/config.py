@@ -80,6 +80,21 @@ class ProfileConfig:
 
 
 @dataclass
+class LLMConfig:
+    enabled: bool = False
+    model: str = "gpt-4o-mini"
+    system_prompt: str = (
+        "You are a text-cleanup assistant. Return only the corrected text. "
+        "Preserve meaning, tone, and language. Light paragraph formatting is fine, "
+        "but do not add headings, lists, or explanations."
+    )
+    prompt: str = "Correct the grammar and punctuation of this text: {text}"
+    trigger_phrase: str = "and fix this"
+    auto_on_length_enabled: bool = False
+    auto_on_length_threshold: int = 200
+
+
+@dataclass
 class AppConfig:
     stt: STTConfig = field(default_factory=STTConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
@@ -89,6 +104,7 @@ class AppConfig:
     profiles: dict[str, ProfileConfig] = field(default_factory=dict)
     active_profile: str = "default"
     history_enabled: bool = True
+    llm: LLMConfig = field(default_factory=LLMConfig)
 
 
 def _merge(base: dict, override: dict) -> dict:
@@ -113,6 +129,7 @@ def load_config(path: Path = CONFIG_PATH) -> AppConfig:
     hotkey_raw = raw.get("hotkey", {})
     output_raw = raw.get("output", {})
     pp_raw = raw.get("postprocess", {})
+    llm_raw = raw.get("llm", {})
 
     return AppConfig(
         stt=STTConfig(**{k: v for k, v in stt_raw.items() if hasattr(STTConfig, k)}),
@@ -128,6 +145,7 @@ def load_config(path: Path = CONFIG_PATH) -> AppConfig:
         postprocess=PostProcessConfig(
             **{k: v for k, v in pp_raw.items() if hasattr(PostProcessConfig, k)}
         ),
+        llm=LLMConfig(**{k: v for k, v in llm_raw.items() if hasattr(LLMConfig, k)}),
         active_profile=raw.get("active_profile", "default"),
         history_enabled=raw.get("history_enabled", True),
     )
@@ -175,6 +193,15 @@ def write_default_config(path: Path = CONFIG_PATH) -> None:
             "format_numbers": cfg.postprocess.format_numbers,
             "fix_unicode": cfg.postprocess.fix_unicode,
             "handle_self_corrections": cfg.postprocess.handle_self_corrections,
+        },
+        "llm": {
+            "enabled": cfg.llm.enabled,
+            "model": cfg.llm.model,
+            "system_prompt": cfg.llm.system_prompt,
+            "prompt": cfg.llm.prompt,
+            "trigger_phrase": cfg.llm.trigger_phrase,
+            "auto_on_length_enabled": cfg.llm.auto_on_length_enabled,
+            "auto_on_length_threshold": cfg.llm.auto_on_length_threshold,
         },
     }
     with open(path, "wb") as f:

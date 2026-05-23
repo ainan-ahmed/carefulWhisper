@@ -94,12 +94,33 @@ async def health() -> dict:
 # ── CLI entrypoint (uv run carefulwhisper) ────────────────────────────────────
 def start() -> None:
     import argparse
+    import os
+    from pathlib import Path
 
     parser = argparse.ArgumentParser(description="carefulWhisper backend")
     parser.add_argument("--port", type=int, default=7331)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
+
+    def load_env_file(path: Path) -> None:
+        if not path.exists():
+            return
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if not key or not value or key in os.environ:
+                    continue
+                os.environ[key] = value
+        except Exception:
+            logger.debug("Failed to load .env file", exc_info=True)
+
+    load_env_file(Path.cwd() / ".env")
 
     uvicorn.run(
         "backend.main:app",
@@ -108,7 +129,6 @@ def start() -> None:
         reload=args.reload,
         log_level="info",
     )
-
 
 if __name__ == "__main__":
     start()

@@ -47,7 +47,7 @@ def _init():
         _backend.load(_cfg.stt.model, _cfg.stt.device, _cfg.stt.compute_type)
         _capture = AudioCapture(_cfg.audio)
         _output = TextOutput(_cfg.output)
-        _pp = PostProcessor(_cfg.postprocess)
+        _pp = PostProcessor(_cfg.postprocess, _cfg.llm)
         _history = HistoryStore()
 
 

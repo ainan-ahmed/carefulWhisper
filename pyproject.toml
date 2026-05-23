@@ -23,6 +23,7 @@ dependencies = [
     "evdev>=1.6.0",
     "text2num>=3.0.0",
     "ftfy>=6.0.0",
+    "litellm>=1.85.1",
 ]
 
 [tool.uv]

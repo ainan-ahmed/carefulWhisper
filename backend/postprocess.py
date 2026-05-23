@@ -9,11 +9,13 @@ from __future__ import annotations
 import re
 
 from backend.config import PostProcessConfig
+from backend.config import LLMConfig
 
 
 class PostProcessor:
-    def __init__(self, cfg: PostProcessConfig) -> None:
+    def __init__(self, cfg: PostProcessConfig, llm_cfg: LLMConfig | None = None) -> None:
         self.cfg = cfg
+        self.llm_cfg = llm_cfg or LLMConfig()
         self._subs: list[tuple[re.Pattern, str]] = [
             (re.compile(r"\b" + re.escape(k) + r"\b", re.IGNORECASE), v)
             for k, v in cfg.substitutions.items()
@@ -60,6 +62,9 @@ class PostProcessor:
 
         if self.cfg.capitalize_sentences:
             text = self._capitalize_sentences(text)
+
+        if self.llm_cfg.enabled:
+            text = self._apply_llm(text)
 
         return text.strip()
 
@@ -124,22 +129,45 @@ class PostProcessor:
         return text
 
     def _capitalize_sentences(self, text: str) -> str:
-        def _replacer(m: re.Match) -> str:
-            punct = m.group(1)
-            space = m.group(2)
-            char = m.group(3)
-            if punct == ".":
-                before_text = text[: m.start()]
-                word_before = re.search(r"(\w+)$", before_text)
-                if word_before and word_before.group(1).lower() in self._TLDs:
-                    return m.group(0)
-                
-                after_text = text[m.end() - 1 :]
-                word_after = re.match(r"([a-z]+)", after_text, re.IGNORECASE)
-                if word_after:
-                    w_lower = word_after.group(1).lower()
-                    if w_lower in self._TLDs or w_lower in {"txt", "zip", "png", "jpg", "jpeg", "gif", "mp3", "wav", "mp4", "pdf", "html", "svg", "webp"}:
-                        return m.group(0)
-            return punct + space + char.upper()
+        def _cap(match: re.Match) -> str:
+            prefix = match.group(1)
+            letter = match.group(2)
+            return f"{prefix}{letter.upper()}"
 
-        return re.sub(r"([.!?])(\s+)([a-z])", _replacer, text)
+        return re.sub(r"(^|[.!?]\s+)([a-z])", _cap, text)
+
+    def _apply_llm(self, text: str) -> str:
+        import logging
+        logger = logging.getLogger("carefulwhisper.postprocess")
+        
+        trigger_phrase = (self.llm_cfg.trigger_phrase or "").strip()
+        has_trigger = bool(trigger_phrase) and text.endswith(trigger_phrase)
+        if has_trigger:
+            clean_text = text[: -len(trigger_phrase)].strip()
+        else:
+            clean_text = text
+
+        if not has_trigger:
+            if not self.llm_cfg.auto_on_length_enabled:
+                return text
+            if len(clean_text) < self.llm_cfg.auto_on_length_threshold:
+                return text
+        prompt = self.llm_cfg.prompt.replace("{text}", clean_text)
+        
+        try:
+            import litellm
+            messages = []
+            if self.llm_cfg.system_prompt:
+                messages.append({"role": "system", "content": self.llm_cfg.system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            response = litellm.completion(
+                model=self.llm_cfg.model,
+                messages=messages,
+                timeout=10.0,
+            )
+            enhanced_text = response.choices[0].message.content.strip()
+            logger.debug("LLM enhanced text: %s", enhanced_text)
+            return enhanced_text
+        except Exception as e:
+            logger.debug("LLM enhancement failed: %s", e)
+            return text

@@ -12,3 +12,6 @@ share/python-wheels/
 MANIFEST
 venv/
 .ruff_cache/
+.env
+.env.*
+!.env.example
