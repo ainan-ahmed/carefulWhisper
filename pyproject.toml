@@ -24,6 +24,9 @@ dependencies = [
     "text2num>=3.0.0",
     "ftfy>=6.0.0",
     "litellm>=1.85.1",
+    "pystray>=0.19.5",
+    "pillow>=12.2.0",
+    "pygobject>=3.56.3",
 ]
 
 [tool.uv]
