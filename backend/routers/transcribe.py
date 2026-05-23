@@ -24,6 +24,7 @@ from backend.history import HistoryStore
 from backend.output import TextOutput
 from backend.postprocess import PostProcessor
 from backend.stt.base import STTResult, TranscribeBackend, get_backend
+from backend import tray
 
 logger = logging.getLogger("carefulwhisper.routers.transcribe")
 router = APIRouter()
@@ -95,6 +96,10 @@ def start_recording_session() -> bool:
             return False
         _capture.start()  # type: ignore[union-attr]
         _recording_active = True
+        try:
+            tray.set_state("working")
+        except Exception as e:
+            logger.debug(f"Tray update failed: {e}")
         return True
 
 
@@ -115,6 +120,12 @@ def stop_recording_session(paste: bool = True) -> TranscribeResponse | None:
         resp = _process_audio(audio)
         if paste:
             _output.paste(resp.text)  # type: ignore[union-attr]
+        
+        try:
+            tray.set_state("done")
+            tray.revert_idle_later()
+        except Exception as e:
+            logger.debug(f"Tray update failed: {e}")
         return resp
 
 

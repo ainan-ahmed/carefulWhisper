@@ -94,6 +94,7 @@ async def health() -> dict:
 # ── CLI entrypoint (uv run carefulwhisper) ────────────────────────────────────
 def start() -> None:
     import argparse
+    import threading
     import os
     from pathlib import Path
 
@@ -122,13 +123,31 @@ def start() -> None:
 
     load_env_file(Path.cwd() / ".env")
 
-    uvicorn.run(
-        "backend.main:app",
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-        log_level="info",
-    )
+    def run_fastapi():
+        # Running with reload=True in a background thread causes signals to crash Python
+        uvicorn.run(
+            "backend.main:app",
+            host=args.host,
+            port=args.port,
+            reload=False,
+            log_level="info",
+        )
+
+    # Start FastAPI in background
+    t_api = threading.Thread(target=run_fastapi, daemon=True)
+    t_api.start()
+
+    # Start System Tray in MAIN thread (blocking)
+    os.environ["PYSTRAY_BACKEND"] = "appindicator"
+    try:
+        from backend.tray import run_tray
+        run_tray()
+    except Exception as e:
+        logger.error(f"Failed to start System Tray: {e}")
+        # fallback
+        import time
+        while True:
+            time.sleep(1)
 
 if __name__ == "__main__":
     start()
