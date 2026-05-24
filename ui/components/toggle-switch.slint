@@ -1,0 +1,40 @@
+// carefulWhisper — Toggle switch component
+// Themed on/off toggle with smooth animation.
+
+import { Theme } from "../theme.slint";
+
+export component ToggleSwitch inherits Rectangle {
+    in-out property <bool> checked: false;
+    callback toggled(bool);
+
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: root.checked ? Theme.accent : Theme.surface-alt;
+    border-width: 1px;
+    border-color: root.checked ? Theme.accent-dim : Theme.border;
+
+    animate background { duration: 200ms; easing: ease-in-out; }
+    animate border-color { duration: 200ms; easing: ease-in-out; }
+
+    // Knob
+    Rectangle {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        x: root.checked ? root.width - self.width - 4px : 3px;
+        y: (root.height - self.height) / 2;
+        background: root.checked ? Theme.text-primary : Theme.text-muted;
+
+        animate x { duration: 200ms; easing: ease-in-out; }
+        animate background { duration: 200ms; easing: ease-in-out; }
+    }
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}

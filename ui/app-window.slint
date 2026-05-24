@@ -2,12 +2,18 @@
 // Thin shell that assembles the header, tab bar, pages, and overlays.
 
 import { Theme }          from "theme.slint";
-import { TranscriptItem } from "types.slint";
+import { TranscriptItem,
+         SettingsSTT, SettingsAudio, SettingsHotkey,
+         SettingsOutput, SettingsPostprocess, SettingsLLM,
+         SettingsGeneral } from "types.slint";
 import { ConfirmDialog }  from "components/confirm-dialog.slint";
+import { Snackbar }       from "components/snackbar.slint";
 import { HomePage }       from "pages/home-page.slint";
 import { HistoryPage }    from "pages/history-page.slint";
+import { SettingsPage }   from "pages/settings-page.slint";
 
-export { TranscriptItem }
+export { TranscriptItem, SettingsSTT, SettingsAudio, SettingsHotkey,
+         SettingsOutput, SettingsPostprocess, SettingsLLM, SettingsGeneral }
 
 export component AppWindow inherits Window {
     title: "carefulWhisper";
@@ -22,6 +28,20 @@ export component AppWindow inherits Window {
     in property <int> total-count: 0;
     in property <string> recording-status: "idle";
 
+    // ── Settings properties ──────────────────────────────────────────────
+    in-out property <SettingsSTT>         settings-stt;
+    in-out property <SettingsAudio>       settings-audio;
+    in-out property <SettingsHotkey>      settings-hotkey;
+    in-out property <SettingsOutput>      settings-output;
+    in-out property <SettingsPostprocess> settings-postprocess;
+    in-out property <SettingsLLM>         settings-llm;
+    in-out property <SettingsGeneral>     settings-general;
+
+    // ── Snackbar properties ──────────────────────────────────────────────
+    in-out property <bool>   snackbar-visible: false;
+    in-out property <string> snackbar-message: "";
+    in-out property <bool>   snackbar-is-error: false;
+
     // ── Internal state ───────────────────────────────────────────────────
     in-out property <int>  active-tab: 0;
     in-out property <bool> show-confirm-dialog: false;
@@ -32,6 +52,16 @@ export component AppWindow inherits Window {
     callback copy-transcript(int);
     callback confirm-delete(int);
     callback toggle-recording();
+
+    // Settings callbacks
+    callback save-stt-settings(SettingsSTT);
+    callback save-audio-settings(SettingsAudio);
+    callback save-hotkey-settings(SettingsHotkey);
+    callback save-output-settings(SettingsOutput);
+    callback save-postprocess-settings(SettingsPostprocess);
+    callback save-llm-settings(SettingsLLM);
+    callback save-general-settings(SettingsGeneral);
+    callback reset-all-settings();
 
     // ── Layout ───────────────────────────────────────────────────────────
 
@@ -77,8 +107,9 @@ export component AppWindow inherits Window {
                 for tab[i] in [
                     { label: "Home" },
                     { label: "History" },
+                    { label: "Settings" },
                 ] : Rectangle {
-                    width: 120px;
+                    width: 100px;
                     height: 40px;
 
                     TouchArea {
@@ -138,6 +169,25 @@ export component AppWindow inherits Window {
                     root.show-confirm-dialog = true;
                 }
             }
+
+            if root.active-tab == 2 : SettingsPage {
+                stt:         root.settings-stt;
+                audio:       root.settings-audio;
+                hotkey:      root.settings-hotkey;
+                output:      root.settings-output;
+                postprocess: root.settings-postprocess;
+                llm:         root.settings-llm;
+                general:     root.settings-general;
+
+                save-stt(v)         => { root.save-stt-settings(v); }
+                save-audio(v)       => { root.save-audio-settings(v); }
+                save-hotkey(v)      => { root.save-hotkey-settings(v); }
+                save-output(v)      => { root.save-output-settings(v); }
+                save-postprocess(v) => { root.save-postprocess-settings(v); }
+                save-llm(v)         => { root.save-llm-settings(v); }
+                save-general(v)     => { root.save-general-settings(v); }
+                reset-all()         => { root.reset-all-settings(); }
+            }
         }
     }
 
@@ -154,5 +204,13 @@ export component AppWindow inherits Window {
             root.show-confirm-dialog = false;
             root.pending-delete-id = -1;
         }
+    }
+
+    // ── Snackbar overlay ─────────────────────────────────────────────────
+
+    Snackbar {
+        show: root.snackbar-visible;
+        message: root.snackbar-message;
+        is-error: root.snackbar-is-error;
     }
 }

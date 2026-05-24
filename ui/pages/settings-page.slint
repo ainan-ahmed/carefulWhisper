@@ -1,0 +1,980 @@
+// carefulWhisper — Settings page
+// Full settings panel with accordion sections, per-section save buttons,
+// and a global Reset to Defaults button.
+
+import { ScrollView, ComboBox, Slider } from "std-widgets.slint";
+
+import { Theme } from "../theme.slint";
+import { ToggleSwitch } from "../components/toggle-switch.slint";
+import {
+    SettingsSTT, SettingsAudio, SettingsHotkey,
+    SettingsOutput, SettingsPostprocess, SettingsLLM,
+    SettingsGeneral,
+} from "../types.slint";
+
+
+// ── Helper: section header ──────────────────────────────────────────────────
+
+component SectionHeader inherits Rectangle {
+    in property <string> title;
+    in property <string> icon;
+    in property <bool>   expanded: false;
+    callback clicked();
+
+    height: 48px;
+    background: touch.has-hover
+        ? Theme.surface-hover : Theme.surface-alt;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.border;
+    animate background { duration: 150ms; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        alignment: space-between;
+
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+
+            Text {
+                text: root.icon;
+                font-size: 16px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: root.title;
+                color: Theme.text-primary;
+                font-size: 14px;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: root.expanded ? "▲" : "▼";
+            color: Theme.text-muted;
+            font-size: 11px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+
+// ── Helper: field label + description ───────────────────────────────────────
+
+component FieldLabel inherits VerticalLayout {
+    in property <string> label;
+    in property <string> description: "";
+    in property <bool>   requires-restart: false;
+
+    spacing: 2px;
+
+    HorizontalLayout {
+        spacing: 8px;
+
+        Text {
+            text: root.label;
+            color: Theme.text-primary;
+            font-size: 13px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+
+        if root.requires-restart : Rectangle {
+            width: restart-text.preferred-width + 12px;
+            height: 18px;
+            border-radius: 4px;
+            background: #e5a03020;
+            border-width: 1px;
+            border-color: Theme.warning;
+
+            restart-text := Text {
+                text: "restart";
+                color: Theme.warning;
+                font-size: 9px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+
+    if root.description != "" : Text {
+        text: root.description;
+        color: Theme.text-hint;
+        font-size: 11px;
+        wrap: word-wrap;
+    }
+}
+
+
+// ── Helper: themed text input ───────────────────────────────────────────────
+
+component ThemedInput inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <bool>   input-password: false;
+    in property <string> placeholder-text: "";
+
+    height: 36px;
+    background: Theme.bg;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    animate border-color { duration: 150ms; }
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+
+        input := TextInput {
+            font-size: 13px;
+            color: Theme.text-primary;
+            vertical-alignment: center;
+            single-line: true;
+            input-type: root.input-password ? InputType.password : InputType.text;
+        }
+    }
+
+    if input.text == "" && !input.has-focus : Text {
+        x: 10px;
+        text: root.placeholder-text;
+        color: Theme.text-hint;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+}
+
+
+// ── Helper: multi-line text area ────────────────────────────────────────────
+
+component ThemedTextArea inherits Rectangle {
+    in-out property <string> text <=> input.text;
+
+    min-height: 80px;
+    background: Theme.bg;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    animate border-color { duration: 150ms; }
+
+    HorizontalLayout {
+        padding: 10px;
+
+        input := TextInput {
+            font-size: 12px;
+            color: Theme.text-primary;
+            wrap: word-wrap;
+            single-line: false;
+        }
+    }
+}
+
+
+// ── Helper: save button ─────────────────────────────────────────────────────
+
+component SaveButton inherits Rectangle {
+    callback clicked();
+
+    width: 80px;
+    height: 34px;
+    border-radius: 8px;
+    background: save-touch.has-hover ? Theme.accent : Theme.accent-dim;
+    animate background { duration: 120ms; }
+
+    save-touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: "Save";
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+
+// ── Helper: field row (label left, control right) ───────────────────────────
+
+component FieldRow inherits HorizontalLayout {
+    alignment: space-between;
+    spacing: 16px;
+    min-height: 36px;
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── Main Settings Page ──────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+export component SettingsPage inherits VerticalLayout {
+    // ── Settings data properties ─────────────────────────────────────────
+    in-out property <SettingsSTT>         stt;
+    in-out property <SettingsAudio>       audio;
+    in-out property <SettingsHotkey>      hotkey;
+    in-out property <SettingsOutput>      output;
+    in-out property <SettingsPostprocess> postprocess;
+    in-out property <SettingsLLM>         llm;
+    in-out property <SettingsGeneral>     general;
+
+    // ── Callbacks ────────────────────────────────────────────────────────
+    callback save-stt(SettingsSTT);
+    callback save-audio(SettingsAudio);
+    callback save-hotkey(SettingsHotkey);
+    callback save-output(SettingsOutput);
+    callback save-postprocess(SettingsPostprocess);
+    callback save-llm(SettingsLLM);
+    callback save-general(SettingsGeneral);
+    callback reset-all();
+
+    // ── Internal state ───────────────────────────────────────────────────
+    in-out property <int> active-section: -1;  // -1 = all collapsed
+    property <bool> show-api-key: false;
+
+    padding: 12px;
+    spacing: 0;
+
+    ScrollView {
+        VerticalLayout {
+            spacing: 6px;
+            alignment: start;
+            padding-bottom: 20px;
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 1: Speech-to-Text
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "Speech-to-Text";
+                icon: "🧠";
+                expanded: root.active-section == 0;
+                clicked => {
+                    root.active-section = root.active-section == 0 ? -1 : 0;
+                }
+            }
+
+            if root.active-section == 0 : Rectangle {
+                background: Theme.surface;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    // Backend
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Backend";
+                            description: "STT engine to use for transcription";
+                            requires-restart: true;
+                        }
+                        stt-backend := ComboBox {
+                            model: ["faster_whisper", "parakeet", "openai"];
+                            current-value: root.stt.backend;
+                        }
+                    }
+
+                    // Model
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Model";
+                            description: "Whisper model size (tiny, base, small, medium, large)";
+                            requires-restart: true;
+                        }
+                        stt-model := ThemedInput {
+                            text: root.stt.model;
+                            placeholder-text: "base.en";
+                        }
+                    }
+
+                    // Language
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Language";
+                            description: "ISO 639-1 code or \"auto\" for detection";
+                        }
+                        stt-language := ThemedInput {
+                            text: root.stt.language;
+                            placeholder-text: "en";
+                        }
+                    }
+
+                    // Device
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Device";
+                            description: "Compute device for inference";
+                            requires-restart: true;
+                        }
+                        stt-device := ComboBox {
+                            model: ["auto", "cpu", "cuda"];
+                            current-value: root.stt.device;
+                        }
+                    }
+
+                    // Compute type
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Compute Type";
+                            description: "Quantization level — int8 is fastest, float32 most accurate";
+                            requires-restart: true;
+                        }
+                        stt-compute := ComboBox {
+                            model: ["int8", "float16", "float32"];
+                            current-value: root.stt.compute-type;
+                        }
+                    }
+
+                    // API Key
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "OpenAI API Key";
+                            description: "Required only for the OpenAI backend";
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            stt-apikey := ThemedInput {
+                                input-password: !root.show-api-key;
+                                text: root.stt.openai-api-key;
+                                placeholder-text: "sk-...";
+                            }
+                            Rectangle {
+                                width: 36px;
+                                height: 36px;
+                                border-radius: 6px;
+                                background: eye-touch.has-hover ? Theme.surface-hover : Theme.bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+                                animate background { duration: 120ms; }
+
+                                eye-touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.show-api-key = !root.show-api-key; }
+                                }
+                                Text {
+                                    text: root.show-api-key ? "🙈" : "👁";
+                                    font-size: 14px;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback to cloud
+                    FieldRow {
+                        FieldLabel {
+                            label: "Fallback to Cloud";
+                            description: "Use OpenAI if local model fails";
+                        }
+                        stt-fallback := ToggleSwitch {
+                            checked: root.stt.fallback-to-cloud;
+                        }
+                    }
+
+                    // Save
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-stt({
+                                    backend: stt-backend.current-value,
+                                    model: stt-model.text,
+                                    language: stt-language.text,
+                                    device: stt-device.current-value,
+                                    compute-type: stt-compute.current-value,
+                                    openai-api-key: stt-apikey.text,
+                                    fallback-to-cloud: stt-fallback.checked,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 2: Audio
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "Audio";
+                icon: "🎤";
+                expanded: root.active-section == 1;
+                clicked => {
+                    root.active-section = root.active-section == 1 ? -1 : 1;
+                }
+            }
+
+            if root.active-section == 1 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    // Sample rate
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Sample Rate";
+                            description: "Audio sample rate in Hz (16000 recommended)";
+                        }
+                        audio-samplerate := ThemedInput {
+                            text: root.audio.sample-rate;
+                            placeholder-text: "16000";
+                        }
+                    }
+
+                    // Channels
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Channels";
+                            description: "1 = mono (recommended), 2 = stereo";
+                        }
+                        audio-channels := ThemedInput {
+                            text: root.audio.channels;
+                            placeholder-text: "1";
+                        }
+                    }
+
+                    // Blocksize
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Block Size";
+                            description: "Audio buffer size in samples";
+                        }
+                        audio-blocksize := ThemedInput {
+                            text: root.audio.blocksize;
+                            placeholder-text: "1024";
+                        }
+                    }
+
+                    // VAD enabled
+                    FieldRow {
+                        FieldLabel {
+                            label: "Voice Activity Detection";
+                            description: "Detect silence to auto-stop recording";
+                        }
+                        audio-vad := ToggleSwitch {
+                            checked: root.audio.vad-enabled;
+                        }
+                    }
+
+                    // VAD threshold
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "VAD Threshold";
+                            description: "0.0 = most sensitive, 1.0 = least sensitive";
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            audio-vad-slider := Slider {
+                                minimum: 0;
+                                maximum: 100;
+                                value: root.audio.vad-threshold * 100;
+                            }
+                            Text {
+                                text: "\{round(audio-vad-slider.value)}%";
+                                color: Theme.text-muted;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                                width: 40px;
+                            }
+                        }
+                    }
+
+                    // VAD min silence
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Min Silence (ms)";
+                            description: "Milliseconds of silence before auto-stop";
+                        }
+                        audio-vad-silence := ThemedInput {
+                            text: root.audio.vad-min-silence-ms;
+                            placeholder-text: "500";
+                        }
+                    }
+
+                    // Save
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-audio({
+                                    sample-rate: root.audio.sample-rate,
+                                    channels: root.audio.channels,
+                                    blocksize: root.audio.blocksize,
+                                    vad-enabled: audio-vad.checked,
+                                    vad-threshold: audio-vad-slider.value / 100,
+                                    vad-min-silence-ms: root.audio.vad-min-silence-ms,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 3: Hotkey
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "Hotkey";
+                icon: "⌨️";
+                expanded: root.active-section == 2;
+                clicked => {
+                    root.active-section = root.active-section == 2 ? -1 : 2;
+                }
+            }
+
+            if root.active-section == 2 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Key Combination";
+                            description: "pynput format, e.g. <ctrl>+<alt>+space";
+                        }
+                        hotkey-combo := ThemedInput {
+                            text: root.hotkey.combo;
+                            placeholder-text: "<ctrl>+<alt>+space";
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Mode";
+                            description: "hold = talk while pressed, toggle = press to start/stop";
+                        }
+                        hotkey-mode := ComboBox {
+                            model: ["hold", "toggle", "always_on"];
+                            current-value: root.hotkey.mode;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-hotkey({
+                                    combo: hotkey-combo.text,
+                                    mode: hotkey-mode.current-value,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 4: Output
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "Output";
+                icon: "📋";
+                expanded: root.active-section == 3;
+                clicked => {
+                    root.active-section = root.active-section == 3 ? -1 : 3;
+                }
+            }
+
+            if root.active-section == 3 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Method";
+                            description: "How transcribed text is pasted into the active window";
+                        }
+                        output-method := ComboBox {
+                            model: ["auto", "xdotool", "ydotool", "clipboard"];
+                            current-value: root.output.method;
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Paste Delay (ms)";
+                            description: "Delay before pasting after transcription completes";
+                        }
+                        output-delay := ThemedInput {
+                            text: root.output.paste-delay-ms;
+                            placeholder-text: "50";
+                        }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Trailing Space";
+                            description: "Add a space after pasted text";
+                        }
+                        output-trailing := ToggleSwitch {
+                            checked: root.output.add-trailing-space;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-output({
+                                    method: output-method.current-value,
+                                    paste-delay-ms: root.output.paste-delay-ms,
+                                    add-trailing-space: output-trailing.checked,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 5: Post-Processing
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "Post-Processing";
+                icon: "✨";
+                expanded: root.active-section == 4;
+                clicked => {
+                    root.active-section = root.active-section == 4 ? -1 : 4;
+                }
+            }
+
+            if root.active-section == 4 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 14px;
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Fix Punctuation";
+                            description: "Correct missing or wrong punctuation marks";
+                        }
+                        pp-punct := ToggleSwitch { checked: root.postprocess.fix-punctuation; }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Capitalize Sentences";
+                            description: "Auto-capitalize the first letter of each sentence";
+                        }
+                        pp-caps := ToggleSwitch { checked: root.postprocess.capitalize-sentences; }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Remove Fillers";
+                            description: "Strip filler words like um, uh, er";
+                        }
+                        pp-fillers := ToggleSwitch { checked: root.postprocess.remove-fillers; }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Format Numbers";
+                            description: "Convert spoken numbers to digits (e.g. 'five' → '5')";
+                        }
+                        pp-numbers := ToggleSwitch { checked: root.postprocess.format-numbers; }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Fix Unicode";
+                            description: "Clean up mojibake and unicode artifacts";
+                        }
+                        pp-unicode := ToggleSwitch { checked: root.postprocess.fix-unicode; }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Handle Self-Corrections";
+                            description: "Detect and apply spoken corrections";
+                        }
+                        pp-corrections := ToggleSwitch { checked: root.postprocess.handle-self-corrections; }
+                    }
+
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-postprocess({
+                                    fix-punctuation: pp-punct.checked,
+                                    capitalize-sentences: pp-caps.checked,
+                                    remove-fillers: pp-fillers.checked,
+                                    format-numbers: pp-numbers.checked,
+                                    fix-unicode: pp-unicode.checked,
+                                    handle-self-corrections: pp-corrections.checked,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 6: LLM
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "LLM Post-Processing";
+                icon: "🤖";
+                expanded: root.active-section == 5;
+                clicked => {
+                    root.active-section = root.active-section == 5 ? -1 : 5;
+                }
+            }
+
+            if root.active-section == 5 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Enable LLM";
+                            description: "Use an LLM to clean up transcriptions";
+                        }
+                        llm-enabled := ToggleSwitch { checked: root.llm.enabled; }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Model";
+                            description: "LLM model identifier (e.g. gpt-4o-mini)";
+                        }
+                        llm-model := ThemedInput {
+                            text: root.llm.model;
+                            placeholder-text: "gpt-4o-mini";
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "System Prompt";
+                            description: "Instructions for the LLM's behavior";
+                        }
+                        llm-sysprompt := ThemedTextArea {
+                            text: root.llm.system-prompt;
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "User Prompt";
+                            description: "Template with {text} placeholder for transcription";
+                        }
+                        llm-prompt := ThemedTextArea {
+                            text: root.llm.prompt;
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Trigger Phrase";
+                            description: "Say this phrase to activate LLM processing";
+                        }
+                        llm-trigger := ThemedInput {
+                            text: root.llm.trigger-phrase;
+                            placeholder-text: "and fix this";
+                        }
+                    }
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Auto on Length";
+                            description: "Auto-trigger LLM when text exceeds threshold";
+                        }
+                        llm-autolen := ToggleSwitch { checked: root.llm.auto-on-length-enabled; }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Length Threshold";
+                            description: "Character count to trigger auto LLM processing";
+                        }
+                        llm-threshold := ThemedInput {
+                            text: root.llm.auto-on-length-threshold;
+                            placeholder-text: "200";
+                        }
+                    }
+
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-llm({
+                                    enabled: llm-enabled.checked,
+                                    model: llm-model.text,
+                                    system-prompt: llm-sysprompt.text,
+                                    prompt: llm-prompt.text,
+                                    trigger-phrase: llm-trigger.text,
+                                    auto-on-length-enabled: llm-autolen.checked,
+                                    auto-on-length-threshold: root.llm.auto-on-length-threshold,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // SECTION 7: General
+            // ══════════════════════════════════════════════════════════════
+
+            SectionHeader {
+                title: "General";
+                icon: "⚙️";
+                expanded: root.active-section == 6;
+                clicked => {
+                    root.active-section = root.active-section == 6 ? -1 : 6;
+                }
+            }
+
+            if root.active-section == 6 : Rectangle {
+                background: Theme.surface;
+                border-width: 1px;
+                border-color: Theme.border;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 16px;
+
+                    FieldRow {
+                        FieldLabel {
+                            label: "Save History";
+                            description: "Store transcriptions in the local database";
+                        }
+                        gen-history := ToggleSwitch { checked: root.general.history-enabled; }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        FieldLabel {
+                            label: "Active Profile";
+                            description: "Profile name for STT/postprocess presets";
+                        }
+                        gen-profile := ThemedInput {
+                            text: root.general.active-profile;
+                            placeholder-text: "default";
+                        }
+                    }
+
+                    // Info note
+                    Rectangle {
+                        background: #7c5cbf10;
+                        border-radius: 6px;
+                        border-width: 1px;
+                        border-color: Theme.accent-dim;
+                        height: info-text.preferred-height + 20px;
+
+                        info-text := Text {
+                            x: 12px;
+                            width: parent.width - 24px;
+                            text: "💡 Advanced fields (custom vocabulary, substitutions, filler word list) can be edited directly in ~/.config/carefulwhisper/config.toml";
+                            color: Theme.text-muted;
+                            font-size: 11px;
+                            wrap: word-wrap;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        alignment: end;
+                        SaveButton {
+                            clicked => {
+                                root.save-general({
+                                    history-enabled: gen-history.checked,
+                                    active-profile: gen-profile.text,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══════════════════════════════════════════════════════════════
+            // Reset to Defaults
+            // ══════════════════════════════════════════════════════════════
+
+            Rectangle { height: 16px; }  // spacer
+
+            Rectangle {
+                height: 40px;
+                border-radius: 8px;
+                background: reset-touch.has-hover
+                    ? Theme.destructive-hover : Theme.destructive;
+                animate background { duration: 120ms; }
+
+                reset-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.reset-all(); }
+                }
+
+                Text {
+                    text: "Reset All Settings to Defaults";
+                    color: #ffffff;
+                    font-size: 13px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

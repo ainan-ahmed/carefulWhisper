@@ -151,6 +151,34 @@ def load_config(path: Path = CONFIG_PATH) -> AppConfig:
     )
 
 
+def write_config(section: str, data: dict, path: Path = CONFIG_PATH) -> dict:
+    """Update a single config section, merge into existing file, and return updated values."""
+    import tomli_w
+
+    # Read existing config
+    raw: dict = {}
+    if path.exists():
+        with open(path, "rb") as f:
+            raw = tomllib.load(f)
+
+    if section == "general":
+        # Top-level keys
+        for k, v in data.items():
+            raw[k] = v
+    else:
+        current = raw.get(section, {})
+        current.update(data)
+        raw[section] = current
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as f:
+        tomli_w.dump(raw, f)
+
+    return raw.get(section, data) if section != "general" else {
+        k: raw.get(k) for k in data
+    }
+
+
 def write_default_config(path: Path = CONFIG_PATH) -> None:
     """Write a starter config file if none exists."""
     import tomli_w

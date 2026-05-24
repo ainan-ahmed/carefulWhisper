@@ -8,3 +8,59 @@ export struct TranscriptItem {
     duration-s: float,
     backend: string,
 }
+
+// ── Settings data types ──────────────────────────────────────────────────────
+
+export struct SettingsSTT {
+    backend: string,
+    model: string,
+    language: string,
+    device: string,
+    compute-type: string,
+    openai-api-key: string,
+    fallback-to-cloud: bool,
+}
+
+export struct SettingsAudio {
+    sample-rate: int,
+    channels: int,
+    blocksize: int,
+    vad-enabled: bool,
+    vad-threshold: float,
+    vad-min-silence-ms: int,
+}
+
+export struct SettingsHotkey {
+    combo: string,
+    mode: string,
+}
+
+export struct SettingsOutput {
+    method: string,
+    paste-delay-ms: int,
+    add-trailing-space: bool,
+}
+
+export struct SettingsPostprocess {
+    fix-punctuation: bool,
+    capitalize-sentences: bool,
+    remove-fillers: bool,
+    format-numbers: bool,
+    fix-unicode: bool,
+    handle-self-corrections: bool,
+}
+
+export struct SettingsLLM {
+    enabled: bool,
+    model: string,
+    system-prompt: string,
+    prompt: string,
+    trigger-phrase: string,
+    auto-on-length-enabled: bool,
+    auto-on-length-threshold: int,
+}
+
+export struct SettingsGeneral {
+    history-enabled: bool,
+    active-profile: string,
+}
