@@ -50,9 +50,13 @@ To keep the UI snappy and ensure the background global hotkey-listener runs with
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2" style="border: none; padding: 10px;">
-      <img src="assets/settings_screenshot.png" alt="carefulWhisper Multi-Section Settings accordions" width="70%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
-      <sub><b>Configuration Panel</b> (Granular accordion settings with Pydantic schemas)</sub>
+    <td align="center" width="50%" style="border: none; padding: 10px;">
+      <img src="assets/settings_screenshot.png" alt="carefulWhisper Settings Panel - STT & Audio" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Configuration Panel (Part 1)</b> (STT, Audio, Hotkey settings)</sub>
+    </td>
+    <td align="center" width="50%" style="border: none; padding: 10px;">
+      <img src="assets/settings_2_screenshot.png" alt="carefulWhisper Settings Panel - Post-Processing & LLM" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Configuration Panel (Part 2)</b> (Post-Processing & LLM controls)</sub>
     </td>
   </tr>
 </table>
