@@ -78,7 +78,7 @@ def _process_audio(audio: np.ndarray) -> TranscribeResponse:
         text = _pp.process(result.text)  # type: ignore[union-attr]
 
         hid = None
-        if _cfg.history_enabled:  # type: ignore[union-attr]
+        if text.strip() and _cfg.history_enabled:  # type: ignore[union-attr]
             hid = _history.add(text, result.language, result.backend, result.duration_s)  # type: ignore[union-attr]
 
         return TranscribeResponse(
@@ -146,7 +146,7 @@ def stop_recording_session(paste: bool = True) -> TranscribeResponse | None:
         _current_state = "transcribing"
         try:
             resp = _process_audio(audio)
-            if paste:
+            if paste and resp.text.strip():
                 _output.paste(resp.text)  # type: ignore[union-attr]
             
             try:
