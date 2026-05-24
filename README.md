@@ -1,13 +1,14 @@
 # 🎙️ carefulWhisper
+>
 > **A local-first, low-latency dictation backend and desktop GUI featuring real-time IPC synchronization, smart post-processing, and global hotkeys.**
 
 ---
 
 [![Python 3.13+](https://img.shields.io/badge/Python-3.13%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Slint UI](https://img.shields.io/badge/Slint_UI-Rust--Powered-FF6F61?style=for-the-badge&logo=rust&logoColor=white)](https://slint.dev/)
+[![Slint UI](https://img.shields.io/badge/Slint_UI-FF6F61?style=for-the-badge&logo=slint)](https://slint.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
-[![faster-whisper](https://img.shields.io/badge/STT-faster--whisper-1f2937?style=for-the-badge)](#)
+[![faster-whisper](https://img.shields.io/badge/STT-faster--whisper-1f2937?style=for-the-badge)](https://github.com/SYSTRAN/faster-whisper)
 
 ---
 
@@ -35,8 +36,8 @@ To keep the UI snappy and ensure the background global hotkey-listener runs with
   <img src="assets/technical_architecture_diagram.png" alt="carefulWhisper Technical Architecture & IPC Flow" width="900">
 </p>
 
-
 ### Key Architectural Patterns
+
 1. **Unblocked Event Loops:** CPU-bound dictation and `faster-whisper` transcription run on an **AnyIO thread pool** (via FastAPI's synchronous `def` endpoints), ensuring the main server ASGI event loop is never blocked. This guarantees the Status API remains highly responsive during heavy processing.
 2. **Standard `asyncio` Thread-Safe Sync:** The Slint UI runs an asynchronous event loop (`slint.run_event_loop`). A background daemon thread polls the backend state every 250ms and dispatches updates thread-safely back to the main UI thread via `loop.call_soon_threadsafe()`.
 3. **Automatic History Sync:** When a polling cycle detects a state transition from `transcribing` or `recording` back to `idle`, the UI thread automatically re-triggers a SQLite database query, causing the newly transcribed text to pop up in the History tab instantly.
@@ -72,6 +73,7 @@ Launch the combined FastAPI daemon and System Tray application:
 ```bash
 uv run carefulwhisper
 ```
+
 *The daemon will spin up FastAPI on port `7331` in a background thread, while launching the native Linux AppIndicator tray icon in the main blocking thread.*
 
 ### 2. Launch the Desktop GUI Standalone
@@ -79,6 +81,7 @@ uv run carefulwhisper
 ```bash
 uv run python -m ui
 ```
+
 *Alternatively, you can open it at any time by clicking **"Open Slint UI"** from the system tray menu.*
 
 ---
