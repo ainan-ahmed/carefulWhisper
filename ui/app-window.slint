@@ -1,0 +1,158 @@
+// carefulWhisper — Main application window
+// Thin shell that assembles the header, tab bar, pages, and overlays.
+
+import { Theme }          from "theme.slint";
+import { TranscriptItem } from "types.slint";
+import { ConfirmDialog }  from "components/confirm-dialog.slint";
+import { HomePage }       from "pages/home-page.slint";
+import { HistoryPage }    from "pages/history-page.slint";
+
+export { TranscriptItem }
+
+export component AppWindow inherits Window {
+    title: "carefulWhisper";
+    preferred-width: 480px;
+    preferred-height: 640px;
+    min-width: 400px;
+    min-height: 500px;
+    background: Theme.bg;
+
+    // ── Properties (bound from Python) ───────────────────────────────────
+    in property <[TranscriptItem]> history: [];
+    in property <int> total-count: 0;
+    in property <string> recording-status: "idle";
+
+    // ── Internal state ───────────────────────────────────────────────────
+    in-out property <int>  active-tab: 0;
+    in-out property <bool> show-confirm-dialog: false;
+    in-out property <int>  pending-delete-id: -1;
+
+    // ── Callbacks (handled in Python) ────────────────────────────────────
+    callback search-changed(string);
+    callback copy-transcript(int);
+    callback confirm-delete(int);
+    callback toggle-recording();
+
+    // ── Layout ───────────────────────────────────────────────────────────
+
+    VerticalLayout {
+        padding: 0;
+        spacing: 0;
+
+        // Header
+        Rectangle {
+            height: 56px;
+            background: Theme.bg;
+
+            HorizontalLayout {
+                alignment: center;
+                padding-top: 16px;
+                padding-bottom: 8px;
+
+                Text {
+                    text: "careful";
+                    color: Theme.text-primary;
+                    font-size: 20px;
+                    font-weight: 300;
+                }
+
+                Text {
+                    text: "Whisper";
+                    color: Theme.accent;
+                    font-size: 20px;
+                    font-weight: 700;
+                }
+            }
+        }
+
+        // Tab bar
+        Rectangle {
+            height: 40px;
+            background: Theme.bg;
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 0;
+
+                for tab[i] in [
+                    { label: "Home" },
+                    { label: "History" },
+                ] : Rectangle {
+                    width: 120px;
+                    height: 40px;
+
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.active-tab = i; }
+                    }
+
+                    VerticalLayout {
+                        alignment: end;
+
+                        Text {
+                            text: tab.label;
+                            color: root.active-tab == i
+                                ? Theme.accent : Theme.text-muted;
+                            font-size: 14px;
+                            font-weight: root.active-tab == i ? 600 : 400;
+                            horizontal-alignment: center;
+                        }
+
+                        Rectangle {
+                            height: 2px;
+                            width: parent.width * 0.6;
+                            x: (parent.width - self.width) / 2;
+                            background: root.active-tab == i
+                                ? Theme.accent : transparent;
+                            border-radius: 1px;
+                            animate background { duration: 200ms; }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                y: parent.height - 1px;
+                height: 1px;
+                background: Theme.border;
+            }
+        }
+
+        // ── Pages ────────────────────────────────────────────────────────
+
+        Rectangle {
+            if root.active-tab == 0 : HomePage {
+                recording-status: root.recording-status;
+                toggle-recording => { root.toggle-recording(); }
+            }
+
+            if root.active-tab == 1 : HistoryPage {
+                history:     root.history;
+                total-count: root.total-count;
+                recording-status: root.recording-status;
+
+                search-changed(q)  => { root.search-changed(q); }
+                copy-clicked(id)   => { root.copy-transcript(id); }
+                delete-clicked(id) => {
+                    root.pending-delete-id = id;
+                    root.show-confirm-dialog = true;
+                }
+            }
+        }
+    }
+
+    // ── Delete confirmation overlay ──────────────────────────────────────
+
+    if root.show-confirm-dialog : ConfirmDialog {
+        confirmed => {
+            root.confirm-delete(root.pending-delete-id);
+            root.show-confirm-dialog = false;
+            root.pending-delete-id = -1;
+        }
+
+        cancelled => {
+            root.show-confirm-dialog = false;
+            root.pending-delete-id = -1;
+        }
+    }
+}

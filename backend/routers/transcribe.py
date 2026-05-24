@@ -38,6 +38,8 @@ _pp = None
 _history = None
 _recording_lock = threading.Lock()
 _recording_active = False
+_current_state = "idle"  # "idle" | "recording" | "transcribing"
+_auto_stop_timer: threading.Timer | None = None
 
 
 def _init():
@@ -61,26 +63,33 @@ class TranscribeResponse(BaseModel):
 
 
 def _process_audio(audio: np.ndarray) -> TranscribeResponse:
+    global _current_state
     _init()
     assert _cfg is not None
     assert _backend is not None
 
-    result: STTResult = _backend.transcribe(
-        audio, _cfg.audio.sample_rate, _cfg.stt.language
-    )  # type: ignore[union-attr]
-    text = _pp.process(result.text)  # type: ignore[union-attr]
+    old_state = _current_state
+    if old_state == "idle":
+        _current_state = "transcribing"
+    try:
+        result: STTResult = _backend.transcribe(
+            audio, _cfg.audio.sample_rate, _cfg.stt.language
+        )  # type: ignore[union-attr]
+        text = _pp.process(result.text)  # type: ignore[union-attr]
 
-    hid = None
-    if _cfg.history_enabled:  # type: ignore[union-attr]
-        hid = _history.add(text, result.language, result.backend, result.duration_s)  # type: ignore[union-attr]
+        hid = None
+        if _cfg.history_enabled:  # type: ignore[union-attr]
+            hid = _history.add(text, result.language, result.backend, result.duration_s)  # type: ignore[union-attr]
 
-    return TranscribeResponse(
-        text=text,
-        language=result.language,
-        duration_s=result.duration_s,
-        backend=result.backend,
-        history_id=hid,
-    )
+        return TranscribeResponse(
+            text=text,
+            language=result.language,
+            duration_s=result.duration_s,
+            backend=result.backend,
+            history_id=hid,
+        )
+    finally:
+        _current_state = old_state
 
 
 def start_recording_session() -> bool:
@@ -88,7 +97,7 @@ def start_recording_session() -> bool:
 
     Returns True if a new recording was started, False if already recording.
     """
-    global _recording_active
+    global _recording_active, _current_state, _auto_stop_timer
 
     with _recording_lock:
         _init()
@@ -96,6 +105,18 @@ def start_recording_session() -> bool:
             return False
         _capture.start()  # type: ignore[union-attr]
         _recording_active = True
+        _current_state = "recording"
+
+        # Failsafe: auto-stop after 180 seconds
+        MAX_DURATION_S = 180.0
+        def auto_stop():
+            logger.warning("Failsafe: Maximum recording duration reached, auto-stopping.")
+            stop_recording_session(paste=True)
+
+        _auto_stop_timer = threading.Timer(MAX_DURATION_S, auto_stop)
+        _auto_stop_timer.daemon = True
+        _auto_stop_timer.start()
+
         try:
             tray.set_state("working")
         except Exception as e:
@@ -108,25 +129,34 @@ def stop_recording_session(paste: bool = True) -> TranscribeResponse | None:
 
     Returns None if recording is not currently active.
     """
-    global _recording_active
+    global _recording_active, _current_state, _auto_stop_timer
 
     with _recording_lock:
         _init()
         if not _recording_active:
             return None
 
+        # Cancel auto-stop timer if active
+        if _auto_stop_timer is not None:
+            _auto_stop_timer.cancel()
+            _auto_stop_timer = None
+
         audio = _capture.stop()  # type: ignore[union-attr]
         _recording_active = False
-        resp = _process_audio(audio)
-        if paste:
-            _output.paste(resp.text)  # type: ignore[union-attr]
-        
+        _current_state = "transcribing"
         try:
-            tray.set_state("done")
-            tray.revert_idle_later()
-        except Exception as e:
-            logger.debug(f"Tray update failed: {e}")
-        return resp
+            resp = _process_audio(audio)
+            if paste:
+                _output.paste(resp.text)  # type: ignore[union-attr]
+            
+            try:
+                tray.set_state("done")
+                tray.revert_idle_later()
+            except Exception as e:
+                logger.debug(f"Tray update failed: {e}")
+            return resp
+        finally:
+            _current_state = "idle"
 
 
 @router.post("/file", response_model=TranscribeResponse)
@@ -159,16 +189,22 @@ async def transcribe_raw(payload: dict) -> TranscribeResponse:
 
 
 @router.post("/start")
-async def recording_start() -> dict:
+def recording_start() -> dict:
     """Tell the capture object to start recording."""
     started = start_recording_session()
     return {"status": "recording" if started else "already_recording"}
 
 
 @router.post("/stop", response_model=TranscribeResponse)
-async def recording_stop(paste: bool = True) -> TranscribeResponse:
+def recording_stop(paste: bool = True) -> TranscribeResponse:
     """Stop recording, transcribe, and optionally paste at cursor."""
     resp = stop_recording_session(paste=paste)
     if resp is None:
         raise HTTPException(status_code=409, detail="Not currently recording")
     return resp
+
+
+@router.get("/status")
+async def recording_status() -> dict:
+    """Get the current recording/transcription state."""
+    return {"status": _current_state}

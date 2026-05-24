@@ -1,0 +1,135 @@
+// carefulWhisper — Home tab (dynamic dashboard and recording states)
+
+import { Theme } from "../theme.slint";
+
+export component HomePage inherits VerticalLayout {
+    in property <string> recording-status: "idle";
+    callback toggle-recording();
+
+    alignment: center;
+    spacing: 32px;
+    padding: 40px;
+
+    // Visual Status Indicator
+    VerticalLayout {
+        alignment: center;
+        spacing: 24px;
+
+        // Animated Circle Badge
+        Rectangle {
+            width: 120px;
+            height: 120px;
+            border-radius: 60px;
+            x: (parent.width - self.width) / 2;
+            
+            background: root.recording-status == "recording"
+                ? #cf444415
+                : root.recording-status == "transcribing"
+                    ? #7c5cbf15
+                    : Theme.surface;
+            border-width: 3px;
+            border-color: root.recording-status == "recording"
+                ? #cf4444
+                : root.recording-status == "transcribing"
+                    ? Theme.accent
+                    : Theme.border;
+
+            animate background { duration: 250ms; }
+            animate border-color { duration: 250ms; }
+
+            // Icon
+            Text {
+                text: root.recording-status == "recording"
+                    ? "🔴"
+                    : root.recording-status == "transcribing"
+                        ? "⚙️"
+                        : "🎙";
+                font-size: 40px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+
+            // Touch Area to start/stop transcription via click
+            TouchArea {
+                mouse-cursor: root.recording-status == "transcribing"
+                    ? MouseCursor.default : MouseCursor.pointer;
+                clicked => {
+                    if (root.recording-status != "transcribing") {
+                        root.toggle-recording();
+                    }
+                }
+            }
+        }
+
+        // Descriptive Status Text
+        VerticalLayout {
+            spacing: 8px;
+
+            Text {
+                text: root.recording-status == "recording"
+                    ? "Listening..."
+                    : root.recording-status == "transcribing"
+                        ? "Transcribing..."
+                        : "Ready to Transcribe";
+                color: root.recording-status == "recording"
+                    ? #cf4444
+                    : root.recording-status == "transcribing"
+                        ? Theme.accent
+                        : Theme.text-primary;
+                font-size: 20px;
+                font-weight: 700;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                text: root.recording-status == "recording"
+                    ? "Speak clearly. Audio is being recorded."
+                    : root.recording-status == "transcribing"
+                        ? "Converting voice to text..."
+                        : "Press Ctrl+Alt+Space to start recording";
+                color: Theme.text-muted;
+                font-size: 13px;
+                font-weight: 400;
+                horizontal-alignment: center;
+            }
+        }
+    }
+
+    // Dynamic Micro-hint
+    Rectangle {
+        height: 40px;
+        background: Theme.surface;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: Theme.border;
+        padding-left: 16px;
+        padding-right: 16px;
+        x: (parent.width - self.width) / 2;
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: center;
+
+            Text {
+                text: root.recording-status == "recording"
+                    ? "💡"
+                    : root.recording-status == "transcribing"
+                        ? "⚡"
+                        : "🔑";
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: root.recording-status == "recording"
+                    ? "Release or press hotkey again to finish"
+                    : root.recording-status == "transcribing"
+                        ? "Almost done! Text will paste automatically"
+                        : "Hold combo to talk, or toggle (configurable)";
+                color: Theme.text-hint;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

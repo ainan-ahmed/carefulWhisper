@@ -1,0 +1,125 @@
+// carefulWhisper — History tab (search + transcript list + status bar)
+
+import { ScrollView } from "std-widgets.slint";
+
+import { Theme }              from "../theme.slint";
+import { TranscriptItem }     from "../types.slint";
+import { TranscriptionCard }  from "../components/transcription-card.slint";
+
+export component HistoryPage inherits VerticalLayout {
+    alignment: LayoutAlignment.stretch;
+    in property <[TranscriptItem]> history: [];
+    in property <int> total-count: 0;
+    in property <string> recording-status: "idle";
+
+    callback search-changed(/* query */ string);
+    callback copy-clicked(/* id */ int);
+    callback delete-clicked(/* id */ int);
+
+    padding: 12px;
+    spacing: 10px;
+
+    // ── Search bar ───────────────────────────────────────────────────────
+
+    Rectangle {
+        height: 40px;
+        background: Theme.surface;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: Theme.border;
+
+        // Make the entire container focus the input box when clicked
+        TouchArea {
+            mouse-cursor: text;
+            clicked => { input.focus(); }
+        }
+
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            alignment: stretch;
+
+            Rectangle {
+                // Stretch to fill remaining space
+                
+                HorizontalLayout {
+                    padding-top: 8px;
+                    padding-bottom: 8px;
+
+                    input := TextInput {
+                        font-size: 13px;
+                        color: Theme.text-primary;
+                        vertical-alignment: center;
+                        single-line: true;
+                        edited => { root.search-changed(self.text); }
+                    }
+                }
+
+                if input.text == "" : Text {
+                    text: "Search transcriptions...";
+                    color: Theme.text-hint;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+
+    // ── Transcript list ──────────────────────────────────────────────────
+
+    ScrollView {
+        VerticalLayout {
+            spacing: 10px;
+            alignment: start;
+
+            for item[i] in root.history : TranscriptionCard {
+                item: item;
+                copy-clicked(id)   => { root.copy-clicked(id); }
+                delete-clicked(id) => { root.delete-clicked(id); }
+            }
+        }
+    }
+
+    // ── Status bar ───────────────────────────────────────────────────────
+
+    Rectangle {
+        height: 28px;
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 8px;
+
+            if root.recording-status == "recording" : Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: #cf4444;
+                y: (parent.height - self.height) / 2;
+            }
+
+            if root.recording-status == "transcribing" : Text {
+                text: "⚙️";
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: root.recording-status == "recording"
+                    ? "Recording..."
+                    : root.recording-status == "transcribing"
+                        ? "Transcribing..."
+                        : root.total-count == 1
+                            ? "1 transcription"
+                            : "\{root.total-count} transcriptions";
+                color: root.recording-status == "recording"
+                    ? #cf4444
+                    : root.recording-status == "transcribing"
+                        ? Theme.accent
+                        : Theme.text-hint;
+                font-size: 11px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

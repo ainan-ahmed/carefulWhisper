@@ -26,20 +26,28 @@ This file describes the current backend execution flow and where each component 
 
 Important: the STT model is loaded once per process (on first request), then reused.
 
-## 3) Live dictation flow (`/transcribe/start` -> `/transcribe/stop`)
+## 3) Live dictation flow (`/transcribe/start` -> `/transcribe/stop` -> `/transcribe/status`)
 
 1. `/transcribe/start`
    - Calls `start_recording_session()`.
    - Internally uses a lock and only starts once while active.
+   - Sets global `_current_state = "recording"`.
+   - Schedules a **180-second** background daemon `threading.Timer` as a failsafe guard to automatically stop recording if the user forgets.
 2. `/transcribe/stop`
    - Calls `stop_recording_session(paste=...)`.
    - Returns 409 if recording was not active.
-3. `_process_audio(...)`
+   - Sets global `_current_state = "transcribing"`.
+   - Under the lock, cancels the active `_auto_stop_timer` failsafe.
+   - Processes audio, runs transcription, and resets `_current_state = "idle"` inside a `finally` block.
+3. `/transcribe/status`
+   - Returns the current global state `{"status": _current_state}`.
+4. `_process_audio(...)`
+   - Temporarily transitions `_current_state` to `"transcribing"` if currently `"idle"` (for direct file/raw routes).
    - `_backend.transcribe(audio, sample_rate, language)`
    - `PostProcessor.process(text)`
    - Optional history write via `HistoryStore.add(...)`
    - Returns `TranscribeResponse`
-4. If `paste=true`, `TextOutput.paste(text)` sends text to active app.
+5. If `paste=true`, `TextOutput.paste(text)` sends text to active app.
 
 ## 4) File transcription flow (`/transcribe/file`)
 
@@ -73,3 +81,14 @@ In `backend/main.py`, hotkey callbacks call:
 
 - start callback -> `transcribe.start_recording_session()`
 - stop callback -> `transcribe.stop_recording_session(paste=True)`
+
+## 8) Slint UI status polling and state sync
+
+1. Standalone UI launched via `backend/tray.py` or manually (`python -m ui`).
+2. Starts a background thread in `ui/main.py` that polls the backend status endpoint (`GET /transcribe/status`) every 250ms.
+3. Marshals state changes thread-safely to the Slint GUI thread via the `asyncio` event loop's `loop.call_soon_threadsafe()` method.
+4. The Slint UI exposes `recording-status` to components:
+   - `HomePage` displays high-fidelity responsive screens for `"idle"`, `"recording"` (pulsing badge, Listening... text, hotkey micro-hints), and `"transcribing"` (spinning indicator, converting voice to text hint).
+   - The `HomePage` microphone badge is fully interactive. Clicking it when `"idle"` fires `toggle-recording` callback to send `POST /transcribe/start`. Clicking it when `"recording"` fires the callback to send `POST /transcribe/stop` (ignored when `"transcribing"`).
+   - `HistoryPage` displays live statuses (`🔴 Recording...` or `⚙️ Transcribing...`) in the bottom status bar.
+5. On `"transcribing" -> "idle"` transition, the UI automatically refreshes the transcript database list so new dictations appear instantly.
