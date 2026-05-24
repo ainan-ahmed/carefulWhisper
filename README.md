@@ -31,41 +31,10 @@ This project was built to showcase production-grade desktop engineering, local-f
 
 To keep the UI snappy and ensure the background global hotkey-listener runs with zero latency, the project implements a **multi-process, multi-threaded architecture** linked by a custom **Inter-Process Communication (IPC)** bridge.
 
-```mermaid
-graph TD
-    subgraph UI_Process [Standalone Slint UI Process]
-        A[Slint GUI Render Loop] <-->|asyncio.get_event_loop| B[Main Event Loop Thread]
-        C[Background Polling Thread] -->|loop.call_soon_threadsafe| B
-        B -->|asyncio.to_thread| H[Non-Blocking UI Handlers]
-    end
+<p align="center">
+  <img src="assets/technical_architecture_diagram.png" alt="carefulWhisper Technical Architecture & IPC Flow" width="900">
+</p>
 
-    subgraph Backend_Daemon [FastAPI Daemon Process]
-        D[FastAPI ASGI Web Server]
-        E[Lifespan Startup Manager] -->|Hotkey combo listener| F[Global HotkeyManager]
-        F -->|Global keyboard hooks| G[System Input: evdev/pynput]
-        
-        subgraph Worker_Pool [AnyIO Thread Pool]
-            I[start_recording_session]
-            J[stop_recording_session]
-            K[threading.Timer failsafe]
-        end
-        
-        D -.->|FastAPI synchronous def endpoints| Worker_Pool
-        F -->|start callback| I
-        F -->|stop callback| J
-    end
-
-    subgraph Hardware [Hardware & Storage]
-        I -->|Capture audio frames| L[sounddevice / soundfile]
-        J -->|faster-whisper transcription| M[STT Model Base]
-        J -->|Insert row| N[(SQLite3 Database)]
-        J -->|Paste key event injection| O[ydotool / xdotool / clipboard]
-    end
-
-    %% Cross-Process IPC requests
-    C -->|GET /transcribe/status| D
-    H -->|POST /transcribe/start or stop| D
-```
 
 ### Key Architectural Patterns
 1. **Unblocked Event Loops:** CPU-bound dictation and `faster-whisper` transcription run on an **AnyIO thread pool** (via FastAPI's synchronous `def` endpoints), ensuring the main server ASGI event loop is never blocked. This guarantees the Status API remains highly responsive during heavy processing.
