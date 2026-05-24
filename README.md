@@ -86,6 +86,35 @@ uv run python -m ui
 
 ---
 
+## 📦 Standalone Packaging (PyInstaller)
+
+For users who want to distribute or run the application without managing a Python runtime, you can compile **carefulWhisper** into a standalone, single-file executable for Linux.
+
+### 1. Install PyInstaller
+First, add PyInstaller to your development dependencies:
+```bash
+uv add --dev pyinstaller
+```
+
+### 2. Compile the Executable
+Since the declarative Slint desktop UI dynamically loads `.slint` templates at startup, PyInstaller must copy the `ui/` resource directory into the compilation bundle. Run the following command to compile:
+
+```bash
+uv run pyinstaller --noconfirm --onefile --windowed \
+  --add-data "ui:ui" \
+  --name "carefulwhisper" \
+  backend/main.py
+```
+
+### 3. Run the Production Binary
+The compiled, zero-dependency executable will be saved in the `dist/` directory and can be executed natively:
+
+```bash
+./dist/carefulwhisper
+```
+
+---
+
 ## 📚 Project Structure
 
 ```
