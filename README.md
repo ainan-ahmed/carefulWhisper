@@ -36,13 +36,13 @@ graph TD
     subgraph UI_Process [Standalone Slint UI Process]
         A[Slint GUI Render Loop] <-->|asyncio.get_event_loop| B[Main Event Loop Thread]
         C[Background Polling Thread] -->|loop.call_soon_threadsafe| B
+        B -->|asyncio.to_thread| H[Non-Blocking UI Handlers]
     end
 
     subgraph Backend_Daemon [FastAPI Daemon Process]
-        D[FastAPI ASGI Web Server] <-->|GET /transcribe/status| C
-        D <-->|POST /transcribe/start or stop| H[Non-Blocking UI Handlers]
+        D[FastAPI ASGI Web Server]
         E[Lifespan Startup Manager] -->|Hotkey combo listener| F[Global HotkeyManager]
-        F -->|Global keyboard hooks| G[System Input evdev/pynput]
+        F -->|Global keyboard hooks| G[System Input: evdev/pynput]
         
         subgraph Worker_Pool [AnyIO Thread Pool]
             I[start_recording_session]
@@ -51,6 +51,8 @@ graph TD
         end
         
         D -.->|FastAPI synchronous def endpoints| Worker_Pool
+        F -->|start callback| I
+        F -->|stop callback| J
     end
 
     subgraph Hardware [Hardware & Storage]
@@ -59,6 +61,10 @@ graph TD
         J -->|Insert row| N[(SQLite3 Database)]
         J -->|Paste key event injection| O[ydotool / xdotool / clipboard]
     end
+
+    %% Cross-Process IPC requests
+    C -->|GET /transcribe/status| D
+    H -->|POST /transcribe/start or stop| D
 ```
 
 ### Key Architectural Patterns
