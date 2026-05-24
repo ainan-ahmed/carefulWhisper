@@ -124,12 +124,12 @@ class App(slint.loader.ui.app_window.AppWindow):
                 from backend.config import load_config
                 cfg = load_config()
                 data = {
-                    "stt": vars(cfg.stt),
-                    "audio": vars(cfg.audio),
-                    "hotkey": vars(cfg.hotkey),
-                    "output": vars(cfg.output),
-                    "postprocess": vars(cfg.postprocess),
-                    "llm": vars(cfg.llm),
+                    "stt": cfg.stt.model_dump(),
+                    "audio": cfg.audio.model_dump(),
+                    "hotkey": cfg.hotkey.model_dump(),
+                    "output": cfg.output.model_dump(),
+                    "postprocess": cfg.postprocess.model_dump(),
+                    "llm": cfg.llm.model_dump(),
                     "active_profile": cfg.active_profile,
                     "history_enabled": cfg.history_enabled,
                 }
