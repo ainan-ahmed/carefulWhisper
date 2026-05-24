@@ -136,24 +136,52 @@ class PostProcessor:
 
         return re.sub(r"(^|[.!?]\s+)([a-z])", _cap, text)
 
+    def _cleanup_llm_text(self, text: str | None) -> str:
+        if not text:
+            return ""
+        text = text.strip()
+        text = re.sub(r"[ \t]{2,}", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text
+
     def _apply_llm(self, text: str) -> str:
         import logging
         logger = logging.getLogger("carefulwhisper.postprocess")
         
         trigger_phrase = (self.llm_cfg.trigger_phrase or "").strip()
-        has_trigger = bool(trigger_phrase) and text.endswith(trigger_phrase)
-        if has_trigger:
-            clean_text = text[: -len(trigger_phrase)].strip()
-        else:
-            clean_text = text
+        has_trigger = False
+        clean_text = text
+        if trigger_phrase:
+            # Look for a fuzzy trigger phrase within the last N words to reduce false positives.
+            window_words = 12
+            word_spans = [m.span() for m in re.finditer(r"\b\w+\b", text)]
+            start_idx = word_spans[-window_words][0] if len(word_spans) >= window_words else 0
+            tail = text[start_idx:]
+
+            variants = [trigger_phrase]
+            if trigger_phrase.lower() == "fixnow":
+                variants.extend(["fix now", "fix no", "fix so", "fix new"])
+
+            for variant in variants:
+                trigger_re = re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
+                match = trigger_re.search(tail)
+                if match:
+                    has_trigger = True
+                    logger.debug("LLM trigger matched variant '%s' in tail window", variant)
+                    cleaned_tail = trigger_re.sub("", tail, count=1)
+                    clean_text = (text[:start_idx] + cleaned_tail).strip()
+                    break
 
         if not has_trigger:
             if not self.llm_cfg.auto_on_length_enabled:
                 return text
-            if len(clean_text) < self.llm_cfg.auto_on_length_threshold:
+            clean_len = len(clean_text)
+            logger.debug("LLM auto-length check: len=%s threshold=%s", clean_len, self.llm_cfg.auto_on_length_threshold)
+            if clean_len < self.llm_cfg.auto_on_length_threshold:
                 return text
+            logger.debug("LLM auto-length trigger fired")
         prompt = self.llm_cfg.prompt.replace("{text}", clean_text)
-        
+
         try:
             import litellm
             messages = []
@@ -165,7 +193,8 @@ class PostProcessor:
                 messages=messages,
                 timeout=10.0,
             )
-            enhanced_text = response.choices[0].message.content.strip()
+            enhanced_text = response.choices[0].message.content
+            enhanced_text = self._cleanup_llm_text(enhanced_text)
             logger.debug("LLM enhanced text: %s", enhanced_text)
             return enhanced_text
         except Exception as e:
