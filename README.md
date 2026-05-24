@@ -122,28 +122,40 @@ The compiled, zero-dependency executable will be saved in the `dist/` directory 
 carefulWhisper/
 ├── backend/                  # Python FastAPI Core Daemon
 │   ├── routers/
-│   │   ├── transcribe.py     # Core STT endpoints, status APIs, failsafe timers
-│   │   ├── history.py        # SQLite list/delete routes
-│   │   ├── settings.py       # REST endpoints for config read/write/reset
-│   │   └── ...
-│   ├── audio.py              # sounddevice InputStream frame capture
+│   │   ├── transcribe.py     # Core STT endpoints, status APIs, and failsafe timers
+│   │   ├── history.py        # SQLite history list and delete endpoints
+│   │   ├── settings.py       # Pydantic PATCH and GET settings routers
+│   │   └── audio.py          # Audio hardware device listing endpoint
+│   │
+│   ├── stt/                  # Speech-to-Text abstraction layer
+│   │   ├── base.py           # STT result container and base classes
+│   │   └── whisper.py        # faster-whisper singleton load and transcription
+│   │
+│   ├── config.py             # Pydantic v2 configuration classes and TOML loader/saver
+│   ├── audio.py              # sounddevice InputStream frame capture queue
+│   ├── history.py            # SQLite HistoryStore database layer & SQL schema
 │   ├── hotkey.py             # Global keyboard hook listener (evdev / pynput)
+│   ├── postprocess.py        # Punctuation/unicode cleaning and LiteLLM enhancements
 │   ├── output.py             # Active window text paste injector (ydotool / xdotool)
-│   ├── tray.py               # Native OS AppIndicator system tray implementation
-│   └── main.py               # Combined ASGI backend startup and lifecycle manager
+│   ├── tray.py               # Native Linux AppIndicator system tray icon and menu
+│   └── main.py               # Combined environmental loader, ASGI uvicorn, and tray lifecycle
 │
 ├── ui/                       # Declarative Slint Desktop App
 │   ├── pages/
 │   │   ├── home-page.slint   # Responsive click-to-toggle dictation view
-│   │   ├── history-page.slint# Custom scroll list and TextInput search bar
-│   │   ├── settings-page.slint# Interactive multi-section configuration panel
-│   │   └── ...
-│   ├── components/           # Modular Slint widgets (e.g. animated ToggleSwitch, Snackbar alerts)
-│   ├── theme.slint           # Unified CSS/dark-mode palette tokens
-│   ├── app-window.slint      # Main shell layout, tabs, and overlays
-│   └── main.py               # Python asyncio thread-safe event loop wiring
+│   │   ├── history-page.slint# Custom scroll list with search and deletion filters
+│   │   └── settings-page.slint# Interactive multi-section configuration panel
+│   │
+│   ├── components/           # Modular Slint widgets
+│   │   ├── toggle-switch.slint# Animated Boolean switch control
+│   │   └── snackbar.slint    # Floating save status overlay feedback
+│   │
+│   ├── types.slint           # Custom settings property structs declaration
+│   ├── theme.slint           # Unified color palette tokens, fonts, and borders
+│   ├── app-window.slint      # Main shell tab layout and overlays
+│   └── main.py               # Python asyncio thread-safe event loop and Slint callbacks
 │
-├── pyproject.toml            # Project packaging & dependencies (slint-python, sounddevice)
+├── pyproject.toml            # Project packaging & dependencies (slint, faster-whisper, litellm)
 ├── README.md                 # Project presentation
 ├── WORKFLOW.md               # Detailed request lifecycle and architecture trace
 └── AGENTS.md                 # Agent-level instructions, gotchas, and constraints
