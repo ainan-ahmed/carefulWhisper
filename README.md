@@ -36,6 +36,27 @@ To keep the UI snappy and ensure the background global hotkey-listener runs with
   <img src="assets/technical_architecture_diagram.png" alt="carefulWhisper Technical Architecture & IPC Flow" width="900">
 </p>
 
+### 🖥️ Application Gallery
+
+<table align="center" width="100%" style="border-collapse: collapse; border: none;">
+  <tr>
+    <td align="center" width="50%" style="border: none; padding: 10px;">
+      <img src="assets/home_screenshot.png" alt="carefulWhisper Active Dictation Dashboard" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Active Dictation Screen</b> (Ready & Recording status badges)</sub>
+    </td>
+    <td align="center" width="50%" style="border: none; padding: 10px;">
+      <img src="assets/history_screenshot.png" alt="carefulWhisper Searchable History Logs" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>History Dashboard</b> (Searchable SQLite transcript logs)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2" style="border: none; padding: 10px;">
+      <img src="assets/settings_screenshot.png" alt="carefulWhisper Multi-Section Settings accordions" width="70%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Configuration Panel</b> (Granular accordion settings with Pydantic schemas)</sub>
+    </td>
+  </tr>
+</table>
+
 ### Key Architectural Patterns
 
 1. **Unblocked Event Loops:** CPU-bound dictation and `faster-whisper` transcription run on an **AnyIO thread pool** (via FastAPI's synchronous `def` endpoints), ensuring the main server ASGI event loop is never blocked. This guarantees the Status API remains highly responsive during heavy processing.
