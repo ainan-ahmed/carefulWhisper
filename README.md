@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Slint UI](https://img.shields.io/badge/Slint_UI-Rust--Powered-FF6F61?style=for-the-badge&logo=rust&logoColor=white)](https://slint.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
-[![faster-whisper](https://img.shields.io/badge/CTranslate2-faster--whisper-1f2937?style=for-the-badge)](#)
+[![faster-whisper](https://img.shields.io/badge/STT-faster--whisper-1f2937?style=for-the-badge)](#)
 
 ---
 
@@ -17,7 +17,7 @@ This project was built to showcase production-grade desktop engineering, local-f
 
 | Component | Technology | Rationale & Architectural Fit |
 | :--- | :--- | :--- |
-| **STT Engine** | **CTranslate2 / `faster-whisper`** | High-performance, quantized (int8/float16) implementation of OpenAI's Whisper model. Up to **4x faster** than the original library with significantly reduced VRAM/RAM footprints, utilizing a **lazy-loaded singleton** pattern. |
+| **STT Engine** | **`faster-whisper`** | High-performance implementation of OpenAI's Whisper model. Up to **4x faster** than the original library with significantly reduced VRAM/RAM footprints by using quantized (int8/float16) weights and a **lazy-loaded singleton** pattern. |
 | **Desktop GUI** | **Slint UI Framework** | A state-of-the-art, Rust-powered declarative UI framework. Chosen over Electron or traditional heavy frameworks for its **ultra-lightweight memory footprint**, native desktop speeds, and unified asynchronous loop bindings in Python. |
 | **Web Server / Daemon** | **FastAPI (ASGI)** | High-performance async gateway serving as the daemon. Leverages Uvicorn and ASGI event-loops to coordinate requests, while routing blocking CPU/STT operations to external worker threads to prevent event loop bottlenecks. |
 | **Database** | **SQLite3** | Embedded, local-first, zero-configuration database utilizing a custom **HistoryStore** abstraction layer to save, list, search, and delete past transcripts with elided previews. |
@@ -55,14 +55,14 @@ graph TD
 
     subgraph Hardware [Hardware & Storage]
         I -->|Capture audio frames| L[sounddevice / soundfile]
-        J -->|CTranslate2 transcription| M[STT Model Base]
+        J -->|faster-whisper transcription| M[STT Model Base]
         J -->|Insert row| N[(SQLite3 Database)]
         J -->|Paste key event injection| O[ydotool / xdotool / clipboard]
     end
 ```
 
 ### Key Architectural Patterns
-1. **Unblocked Event Loops:** CPU-bound dictation and CTranslate2 transcription run on an **AnyIO thread pool** (via FastAPI's synchronous `def` endpoints), ensuring the main server ASGI event loop is never blocked. This guarantees the Status API remains highly responsive during heavy processing.
+1. **Unblocked Event Loops:** CPU-bound dictation and `faster-whisper` transcription run on an **AnyIO thread pool** (via FastAPI's synchronous `def` endpoints), ensuring the main server ASGI event loop is never blocked. This guarantees the Status API remains highly responsive during heavy processing.
 2. **Standard `asyncio` Thread-Safe Sync:** The Slint UI runs an asynchronous event loop (`slint.run_event_loop`). A background daemon thread polls the backend state every 250ms and dispatches updates thread-safely back to the main UI thread via `loop.call_soon_threadsafe()`.
 3. **Automatic History Sync:** When a polling cycle detects a state transition from `transcribing` or `recording` back to `idle`, the UI thread automatically re-triggers a SQLite database query, causing the newly transcribed text to pop up in the History tab instantly.
 4. **Failsafe Duration Cutoff:** Dictation is protected by a thread-safe **180-second** (3 minutes) daemon `threading.Timer` guard in the backend. If a user forgets to stop dictating, the backend automatically halts the stream, processes the transcript, and resets the UI state, protecting local RAM/CPU resources from overflows.
