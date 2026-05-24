@@ -41,6 +41,15 @@ uv sync
 uv run python -m backend.main --port 7331 --reload
 ```
 
+### Option D: Slint Desktop UI (Standalone)
+
+```bash
+uv sync
+uv run python -m ui
+```
+
+> **System Tray Launch**: Once the backend is running, you can also launch the Slint UI directly by clicking **"Open Slint UI"** from the system tray context menu.
+
 > **Wayland users**: `ydotool` requires its daemon to be running before starting the app.
 > ```bash
 > systemctl --user enable --now ydotool  # permanent
@@ -55,13 +64,13 @@ curl http://127.0.0.1:7331/health
 
 ---
 
-## ✨ Current Capabilities
-
+- Native desktop **Slint GUI** (tabbed interface featuring a dynamic Home state, interactive click-to-toggle dictation, real-time transcription loading indicator, and a complete History search dashboard with text copying and delete confirmation)
 - Global hotkey dictation flow (`/transcribe/start` + `/transcribe/stop`)
-- File and raw transcription endpoints (`/transcribe/file`, `/transcribe/raw`)
+- Failsafe recording duration guard (automatically cuts off and transcribes after 180s of recording to protect hardware)
+- File and raw transcription endpoints (`/transcribe/file`, `/transcribe/raw`, `GET /transcribe/status`)
 - Output auto-selection (`ydotool`/`xdotool`/clipboard fallback)
 - Robust text postprocessing (filler removal, number formatting via `text2num`, unicode fixing via `ftfy`, smart punctuation/capitalization that preserves domains)
-- History, audio device listing, and settings endpoints
+- History (SQLite), audio device listing, and settings endpoints
 
 ---
 
@@ -76,4 +85,5 @@ curl http://127.0.0.1:7331/health
 ## 📚 Project Docs
 
 - `AGENTS.md` — high-signal repo instructions for coding agents
-- `WORKFLOW.md` — backend execution flow and request lifecycle
+- `WORKFLOW.md` — backend and frontend event loops, request lifecycles, and polling sync
+- `ui/` — package directory containing Slint templates, types, and theme definitions
