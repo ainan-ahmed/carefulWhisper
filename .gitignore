@@ -1,7 +1,8 @@
 */__pycache__/
 *.py[codz]
 *$py.class
-.Python
+.Python*
+.python*
 build/
 eggs/
 .eggs/
