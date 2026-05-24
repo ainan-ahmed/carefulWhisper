@@ -174,6 +174,7 @@ dependencies = [
     { name = "pyperclip" },
     { name = "pystray" },
     { name = "resampy" },
+    { name = "slint" },
     { name = "sounddevice" },
     { name = "soundfile" },
     { name = "text2num" },
@@ -193,6 +194,7 @@ requires-dist = [
     { name = "pyperclip", specifier = ">=1.9.0" },
     { name = "pystray", specifier = ">=0.19.5" },
     { name = "resampy", specifier = ">=0.4.3" },
+    { name = "slint", specifier = ">=1.12.0" },
     { name = "sounddevice", specifier = ">=0.5.1" },
     { name = "soundfile", specifier = ">=0.13.1" },
     { name = "text2num", specifier = ">=3.0.0" },
@@ -2013,6 +2015,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "slint"
+version = "1.16.1b1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/b3/2f0b7a4e7eb9e5a154b584f9a7b043125a03e02e2a9fbb94a274d43b4e13/slint-1.16.1b1.tar.gz", hash = "sha256:6468f0761e6a103a7dd058423ed049142fa360f64592a7c0319a78c9267fbe5e", size = 2317386, upload-time = "2026-04-23T15:15:58.97Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/16/a9fe042fea22b88d290a64ccd1245b314142fa2a7908118e92d0b39d504c/slint-1.16.1b1-cp311-abi3-ios_13_0_arm64_iphoneos.whl", hash = "sha256:8fa9d103c572e17bdc8a7a6d99cf9c75f00f33a92ad80c57cca64968f7b80414", size = 7681826, upload-time = "2026-04-23T15:15:43.681Z" },
+    { url = "https://files.pythonhosted.org/packages/04/4b/ce6d3c172507a8138c89a6a743292a369e39f121fe163e60719d710a6f1f/slint-1.16.1b1-cp311-abi3-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:9311c8cfc75863e74f574bfc62fcede0369a0c72e774d74edeef0bbc57288537", size = 7807913, upload-time = "2026-04-23T15:15:45.914Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/ca/ed78f7e6e6c864419dfc0c7865f8536ad14b05c37a4a7694d83f627a5611/slint-1.16.1b1-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:26d61d59cbab249bd2b13644c4ca50382b72cda95bf3fd8d0844e14080ea8ddd", size = 8454816, upload-time = "2026-04-23T15:15:47.85Z" },
+    { url = "https://files.pythonhosted.org/packages/11/42/486c896fd87de546d14150405284353596ad7605601c27b3661058dc4ee4/slint-1.16.1b1-cp311-abi3-manylinux_2_31_aarch64.whl", hash = "sha256:c61d11efbc965b3b92307414850f033ca78e3c3ee008c59715484de5afedb7de", size = 13135058, upload-time = "2026-04-23T15:15:49.986Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/8f/ad1b39dbf5a6747980c9878522fbb7897eaaec8e64951d01a99ee1823834/slint-1.16.1b1-cp311-abi3-manylinux_2_31_armv7l.whl", hash = "sha256:a9891eed8c1e552ea7e3894dc75687c6efb23bc47785af134c724e74ce9d1309", size = 12828023, upload-time = "2026-04-23T15:15:52.301Z" },
+    { url = "https://files.pythonhosted.org/packages/23/5d/e223bc84179352154cd4d47e4320d62d1ddc5bf4e0fb564585e8055ee699/slint-1.16.1b1-cp311-abi3-manylinux_2_35_x86_64.whl", hash = "sha256:0fb757be60d900e13ad45f85f12048ec346a481f50da011ab025b23208bfad7b", size = 13590663, upload-time = "2026-04-23T15:15:54.441Z" },
+    { url = "https://files.pythonhosted.org/packages/18/9b/2e9daf8e59c23d81d14c8b8a58aed45b6d11c9c204dbb723395b2584d737/slint-1.16.1b1-cp311-abi3-win_amd64.whl", hash = "sha256:9adf3f18462c801221e10fad37267090438a1c1aa4bc80fbee242065e821a8c3", size = 9327407, upload-time = "2026-04-23T15:15:56.733Z" },
 ]
 
 [[package]]

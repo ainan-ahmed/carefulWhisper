@@ -1,0 +1,127 @@
+// carefulWhisper — Transcription history card delegate
+// Displays a single transcript with text preview, metadata, copy & delete buttons.
+
+import { Theme } from "../theme.slint";
+import { TranscriptItem } from "../types.slint";
+
+export component TranscriptionCard inherits Rectangle {
+    in property <TranscriptItem> item;
+
+    callback copy-clicked(int);
+    callback delete-clicked(int);
+
+    height: card-layout.preferred-height + 24px;
+    background: touch.has-hover ? Theme.surface-hover : Theme.surface;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.border;
+    clip: true;
+
+    animate background { duration: 150ms; easing: ease-in-out; }
+
+    touch := TouchArea {
+        mouse-cursor: default;
+    }
+
+    // ── Card content ─────────────────────────────────────────────────────
+
+    card-layout := VerticalLayout {
+        padding: 14px;
+        padding-right: 56px;
+        spacing: 6px;
+
+        // Text preview (~2 lines max)
+        Text {
+            text: root.item.text;
+            color: Theme.text-primary;
+            font-size: 13px;
+            overflow: elide;
+            wrap: word-wrap;
+            max-height: 40px;
+        }
+
+        // Metadata row
+        HorizontalLayout {
+            spacing: 12px;
+            alignment: start;
+
+            Text {
+                text: root.item.created-at;
+                color: Theme.text-muted;
+                font-size: 11px;
+            }
+
+            Text {
+                text: root.item.word-count >= 0
+                    ? "\{root.item.word-count} words" : "";
+                color: Theme.text-muted;
+                font-size: 11px;
+            }
+
+            Text {
+                text: root.item.duration-s > 0
+                    ? "\{round(root.item.duration-s * 10) / 10}s" : "";
+                color: Theme.text-muted;
+                font-size: 11px;
+            }
+
+            Text {
+                text: root.item.backend;
+                color: Theme.text-hint;
+                font-size: 11px;
+            }
+        }
+    }
+
+    // ── Action buttons (right edge, stacked) ─────────────────────────────
+
+    VerticalLayout {
+        x: root.width - 48px;
+        y: 8px;
+        width: 40px;
+        spacing: 4px;
+        alignment: start;
+
+        // Copy
+        Rectangle {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: copy-touch.has-hover ? Theme.surface-hover : transparent;
+            animate background { duration: 120ms; }
+
+            copy-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.copy-clicked(root.item.id); }
+            }
+
+            Text {
+                text: "📋";
+                font-size: 14px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // Delete
+        Rectangle {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: del-touch.has-hover ? #3a1c1c : transparent;
+            animate background { duration: 120ms; }
+
+            del-touch := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.delete-clicked(root.item.id); }
+            }
+
+            Text {
+                text: "🗑";
+                font-size: 14px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

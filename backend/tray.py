@@ -1,7 +1,10 @@
+import logging
 import threading
 import os
 import pystray
 from PIL import Image, ImageDraw
+
+logger = logging.getLogger("carefulwhisper.tray")
 
 _icon = None
 _state_lock = threading.Lock()
@@ -31,7 +34,9 @@ def revert_idle_later():
     threading.Timer(2.0, lambda: set_state("idle")).start()
 
 def on_open_ui(icon, item):
-    print("Tray: Open Slint UI clicked (Coming Soon)")
+    import subprocess, sys
+    logger.info("Tray: launching Slint UI")
+    subprocess.Popen([sys.executable, "-m", "ui"])
 
 def on_quit(icon, item):
     print("Tray: Quit clicked")

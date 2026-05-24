@@ -1,0 +1,98 @@
+// carefulWhisper — Delete confirmation dialog overlay
+// Full-screen semi-transparent overlay with centered dialog box.
+
+import { Theme } from "../theme.slint";
+
+export component ConfirmDialog inherits Rectangle {
+    in property <string> message: "Delete this transcription?";
+
+    callback confirmed();
+    callback cancelled();
+
+    background: Theme.overlay;
+
+    // Block clicks from reaching content below
+    TouchArea {}
+
+    // ── Centered dialog box ──────────────────────────────────────────────
+
+    Rectangle {
+        width: 320px;
+        height: 160px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Theme.surface;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: Theme.border;
+        drop-shadow-blur: 20px;
+        drop-shadow-color: #00000066;
+
+        VerticalLayout {
+            padding: 24px;
+            spacing: 20px;
+            alignment: center;
+
+            Text {
+                text: root.message;
+                color: Theme.text-primary;
+                font-size: 15px;
+                horizontal-alignment: center;
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: center;
+
+                // Cancel
+                Rectangle {
+                    width: 100px;
+                    height: 36px;
+                    border-radius: 8px;
+                    background: cancel-touch.has-hover
+                        ? Theme.surface-hover : Theme.bg;
+                    border-width: 1px;
+                    border-color: Theme.border;
+                    animate background { duration: 120ms; }
+
+                    cancel-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.cancelled(); }
+                    }
+
+                    Text {
+                        text: "Cancel";
+                        color: Theme.text-muted;
+                        font-size: 13px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // Delete (destructive)
+                Rectangle {
+                    width: 100px;
+                    height: 36px;
+                    border-radius: 8px;
+                    background: confirm-touch.has-hover
+                        ? Theme.destructive-hover : Theme.destructive;
+                    animate background { duration: 120ms; }
+
+                    confirm-touch := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.confirmed(); }
+                    }
+
+                    Text {
+                        text: "Delete";
+                        color: #ffffff;
+                        font-size: 13px;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}
