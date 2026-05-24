@@ -51,12 +51,12 @@ To keep the UI snappy and ensure the background global hotkey-listener runs with
   </tr>
   <tr>
     <td align="center" width="50%" style="border: none; padding: 10px;">
-      <img src="assets/settings_screenshot.png" alt="carefulWhisper Settings Panel - STT & Audio" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
-      <sub><b>Configuration Panel (Part 1)</b> (STT, Audio, Hotkey settings)</sub>
+      <img src="assets/settings_screenshot.png" alt="carefulWhisper Settings Panel - Collapsed" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Configuration Panel (Part 1)</b> (Overview showing all 7 collapsed sections)</sub>
     </td>
     <td align="center" width="50%" style="border: none; padding: 10px;">
-      <img src="assets/settings_2_screenshot.png" alt="carefulWhisper Settings Panel - Post-Processing & LLM" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
-      <sub><b>Configuration Panel (Part 2)</b> (Post-Processing & LLM controls)</sub>
+      <img src="assets/settings_2_screenshot.png" alt="carefulWhisper Settings Panel - Expanded Hotkeys" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"><br>
+      <sub><b>Configuration Panel (Part 2)</b> (Expanded view showing Hotkey & form controls)</sub>
     </td>
   </tr>
 </table>
