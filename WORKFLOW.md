@@ -92,3 +92,23 @@ In `backend/main.py`, hotkey callbacks call:
    - The `HomePage` microphone badge is fully interactive. Clicking it when `"idle"` fires `toggle-recording` callback to send `POST /transcribe/start`. Clicking it when `"recording"` fires the callback to send `POST /transcribe/stop` (ignored when `"transcribing"`).
    - `HistoryPage` displays live statuses (`🔴 Recording...` or `⚙️ Transcribing...`) in the bottom status bar.
 5. On `"transcribing" -> "idle"` transition, the UI automatically refreshes the transcript database list so new dictations appear instantly.
+
+## 9) Settings Management and State Sync
+
+1. **Initialization**: On Slint UI startup (`ui/main.py`), the app calls `_load_settings()` which fires an asynchronous HTTP `GET /settings/` request to the daemon. If the daemon is unreachable (e.g., in a standalone GUI run prior to backend start), it falls back to loading directly via `backend.config.load_config()`.
+2. **UI Binding**: The settings dictionary is parsed and bound to 7 separate Slint property structs:
+   - `settings_stt`: backend, model, language, device, compute_type, openai_api_key, fallback_to_cloud
+   - `settings_audio`: sample_rate, channels, blocksize, vad_enabled, vad_threshold, vad_min_silence_ms
+   - `settings_hotkey`: combo, mode
+   - `settings_output`: method, paste_delay_ms, add_trailing_space
+   - `settings_postprocess`: fix_punctuation, capitalize_sentences, remove_fillers, format_numbers, fix_unicode, handle_self_corrections
+   - `settings_llm`: enabled, model, system_prompt, prompt, trigger_phrase, auto_on_length_enabled, auto_on_length_threshold
+   - `settings_general`: history_enabled, active_profile
+3. **Interactive Control & Validation**: `ui/pages/settings-page.slint` displays these settings grouped into 7 accordion panels. It uses standard text fields, custom animated `ToggleSwitch` widgets, Slint sliders, and Dropdown ComboBoxes. Sensitive credentials (like `openai_api_key`) are dynamically masked when inactive.
+4. **Asynchronous Saving (PATCH)**: Saving is granular and atomic per section. Clicking "Save" on a section accordion triggers a corresponding Slint callback:
+   - The UI marshals the respective Slint properties into a Python dictionary.
+   - It spawns a background thread that executes a `PATCH /settings/{section}` HTTP request containing the section data (or falls back to direct configuration writing using `backend.config.write_config(section, data)`).
+   - The backend validates the section name, writes the new values to `~/.config/carefulwhisper/config.toml`, and returns success.
+   - Upon a successful update, the UI thread triggers a floating `Snackbar` notification overlay that auto-dismisses after 2.5 seconds using a thread-safe `Timer`.
+5. **Configuration Reset**: Clicking "Reset to Defaults" fires a `POST /settings/reset` request to the daemon (with a direct `backend.config.write_default_config()` fallback) which overwrites the active configuration with clean defaults. The UI thread then automatically re-fetches the values from the backend and re-binds them to refresh all settings panels instantly.
+

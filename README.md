@@ -54,7 +54,8 @@ To keep the UI snappy and ensure the background global hotkey-listener runs with
   - **Transcribing:** Rotating status wheel ⚙️, loading indicators.
 - 📋 **Integrated Clipboard Pasting:** Automatically pastes completed text directly into your active input field at your cursor position using Wayland-compatible `ydotool` or X11 `xdotool` key injection pipelines.
 - 🔍 **History Dashboard:** Search, browse, copy, and delete confirmation overlay for past dictations, built using a custom scroll layout.
-- 💡 **Fuzzy LLM Triggering:** Supports fuzzy keyword detection (e.g. "fix now", "fix this") to automatically pass your finished transcript to a local LLM API for grammar, punctuation, and structural cleanup before pasting.
+- ⚙️ **Interactive Settings Panel:** A premium, multi-section configuration panel to customize STT parameters (models, devices), audio VAD thresholds, system keyboard hotkeys, window paste delays, LLM-based post-processing prompts, and app preferences with instant validation and slick snackbar confirmation alerts.
+- 💡 **Fuzzy LLM Triggering:** Supports fuzzy keyword detection (e.g. "fix now", "fix this") to automatically pass your finished transcript to a local/cloud LLM API for grammar, punctuation, and structural cleanup before pasting.
 
 ---
 
@@ -123,6 +124,7 @@ carefulWhisper/
 │   ├── routers/
 │   │   ├── transcribe.py     # Core STT endpoints, status APIs, failsafe timers
 │   │   ├── history.py        # SQLite list/delete routes
+│   │   ├── settings.py       # REST endpoints for config read/write/reset
 │   │   └── ...
 │   ├── audio.py              # sounddevice InputStream frame capture
 │   ├── hotkey.py             # Global keyboard hook listener (evdev / pynput)
@@ -133,8 +135,10 @@ carefulWhisper/
 ├── ui/                       # Declarative Slint Desktop App
 │   ├── pages/
 │   │   ├── home-page.slint   # Responsive click-to-toggle dictation view
-│   │   └── history-page.slint# Custom scroll list and TextInput search bar
-│   ├── components/           # Modular Slint widgets
+│   │   ├── history-page.slint# Custom scroll list and TextInput search bar
+│   │   ├── settings-page.slint# Interactive multi-section configuration panel
+│   │   └── ...
+│   ├── components/           # Modular Slint widgets (e.g. animated ToggleSwitch, Snackbar alerts)
 │   ├── theme.slint           # Unified CSS/dark-mode palette tokens
 │   ├── app-window.slint      # Main shell layout, tabs, and overlays
 │   └── main.py               # Python asyncio thread-safe event loop wiring
