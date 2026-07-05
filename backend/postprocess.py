@@ -39,9 +39,9 @@ class PostProcessor:
             ),
         ]
 
-    def process(self, text: str) -> str:
+    def process(self, text: str) -> tuple[str, str]:
         if not text:
-            return text
+            return "stt", text
 
         if self.cfg.fix_unicode:
             text = self._fix_unicode(text)
@@ -63,10 +63,11 @@ class PostProcessor:
         if self.cfg.capitalize_sentences:
             text = self._capitalize_sentences(text)
 
+        mode = "stt"
         if self.llm_cfg.enabled:
-            text = self._apply_llm(text)
+            mode, text = self._apply_llm(text)
 
-        return text.strip()
+        return mode, text.strip()
 
     def _fix_unicode(self, text: str) -> str:
         import ftfy  # type: ignore[import]
@@ -144,7 +145,7 @@ class PostProcessor:
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text
 
-    def _apply_llm(self, text: str) -> str:
+    def _apply_llm(self, text: str) -> tuple[str, str]:
         import logging
         logger = logging.getLogger("carefulwhisper.postprocess")
         
@@ -173,30 +174,61 @@ class PostProcessor:
                     break
 
         if not has_trigger:
-            if not self.llm_cfg.auto_on_length_enabled:
-                return text
-            clean_len = len(clean_text)
-            logger.debug("LLM auto-length check: len=%s threshold=%s", clean_len, self.llm_cfg.auto_on_length_threshold)
-            if clean_len < self.llm_cfg.auto_on_length_threshold:
-                return text
-            logger.debug("LLM auto-length trigger fired")
-        prompt = self.llm_cfg.prompt.replace("{text}", clean_text)
-
+            mode = getattr(self.llm_cfg, "mode", "stt")
+            if mode != "auto" and mode != "assistant":
+                if not self.llm_cfg.auto_on_length_enabled:
+                    return "stt", text
+                clean_len = len(clean_text)
+                logger.debug("LLM auto-length check: len=%s threshold=%s", clean_len, self.llm_cfg.auto_on_length_threshold)
+                if clean_len < self.llm_cfg.auto_on_length_threshold:
+                    return "stt", text
+                logger.debug("LLM auto-length trigger fired")
         try:
-            import litellm
-            messages = []
-            if self.llm_cfg.system_prompt:
-                messages.append({"role": "system", "content": self.llm_cfg.system_prompt})
-            messages.append({"role": "user", "content": prompt})
-            response = litellm.completion(
-                model=self.llm_cfg.model,
-                messages=messages,
-                timeout=10.0,
-            )
-            enhanced_text = response.choices[0].message.content
-            enhanced_text = self._cleanup_llm_text(enhanced_text)
+            from pydantic_ai import Agent
+
+            mode = getattr(self.llm_cfg, "mode", "stt")
+            if mode == "auto":
+                router_model = getattr(self.llm_cfg, "router_model", "gemini-2.5-flash")
+                if router_model.startswith("gemini"):
+                    router_model = f"google:{router_model}"
+                router_agent = Agent(
+                    router_model,
+                    system_prompt=(
+                        "You are a dual-mode intent classifier for a voice app. Classify the user's input.\n"
+                        "- Output COMMAND if the user is asking a question, requesting a task, or prompting an AI (e.g., 'Write a python script', 'What's the weather?', 'Summarize this').\n"
+                        "- Output DICTATION if the user is dictating text for an email, document, or general transcription (e.g., 'Dear John, I will be late.', 'Note for the meeting:').\n"
+                        "Output STRICTLY 'COMMAND' or 'DICTATION'."
+                    )
+                )
+                route_res = router_agent.run_sync(clean_text)
+                decision = route_res.output.strip().upper()
+                logger.debug("LLM router decision: %s", decision)
+                if "COMMAND" in decision or "ASSISTANT" in decision:
+                    mode = "assistant"
+                else:
+                    mode = "stt"
+
+            if mode == "assistant":
+                sys_prompt = getattr(self.llm_cfg, "assistant_prompt", "You are a helpful AI assistant. Answer the user's question or command concisely.")
+                user_prompt = clean_text
+            else:
+                sys_prompt = self.llm_cfg.system_prompt
+                user_prompt = self.llm_cfg.prompt.replace("{text}", clean_text)
+
+            model_name = self.llm_cfg.model
+            if model_name.startswith("gemini"):
+                model_name = f"google:{model_name}"
+            agent = Agent(model_name, system_prompt=sys_prompt)
+            result = agent.run_sync(user_prompt)
+            enhanced_text = result.output
+
+            if mode == "stt":
+                enhanced_text = self._cleanup_llm_text(enhanced_text)
+            else:
+                enhanced_text = enhanced_text.strip()
+                
             logger.debug("LLM enhanced text: %s", enhanced_text)
-            return enhanced_text
+            return mode, enhanced_text
         except Exception as e:
-            logger.debug("LLM enhancement failed: %s", e)
-            return text
+            logger.exception("LLM enhancement failed")
+            return "stt", text

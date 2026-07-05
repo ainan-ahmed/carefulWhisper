@@ -69,10 +69,10 @@ def test_postprocessing(raw_text: str) -> None:
     print()
     print("  " + "=" * 70)
     for label, cfg in configs:
-        pp = PostProcessor(cfg)
-        result = pp.process(raw_text)
+        pp = PostProcessor(cfg, LLMConfig(enabled=False))
+        mode, processed = pp.process(raw_text)
         print(f"  {label}:")
-        print(f"    {result}")
+        print(f"    [{mode.upper()}] {processed}")
         print()
 
 
