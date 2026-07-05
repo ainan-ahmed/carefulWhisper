@@ -1,0 +1,118 @@
+import { Theme } from "../theme.slint";
+import { ChatMessage } from "../types.slint";
+import { ScrollView } from "std-widgets.slint";
+
+export component AssistantPage inherits Rectangle {
+    in property <[ChatMessage]> chat-history: [];
+    in property <bool> is-loading: false;
+    callback send-message(string);
+
+    property <string> current-input: "";
+
+    background: Theme.bg;
+    
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        // Chat messages area
+        Rectangle {
+            background: Theme.surface;
+            border-radius: 8px;
+            clip: true;
+            
+            ScrollView {
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+                    alignment: start;
+                    
+                    for msg in chat-history: HorizontalLayout {
+                        alignment: msg.role == "user" ? LayoutAlignment.end : LayoutAlignment.start;
+                        
+                        Rectangle {
+                            background: msg.role == "user" ? Theme.accent : Theme.surface-alt;
+                            border-radius: 12px;
+                            padding: 12px;
+                            
+                            // Prevent bubble from taking infinite width
+                            // which breaks TextWrap
+                            max-width: 340px;
+                            
+                            Text {
+                                text: msg.content;
+                                color: Theme.text-primary;
+                                wrap: TextWrap.word-wrap;
+                                font-size: 14px;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Input area
+        HorizontalLayout {
+            spacing: 8px;
+            height: 48px;
+
+            Rectangle {
+                background: Theme.surface;
+                border-radius: 24px;
+                horizontal-stretch: 1;
+
+                TextInput {
+                    width: parent.width - 32px;
+                    height: parent.height - 16px;
+                    x: 16px;
+                    y: 8px;
+                    text <=> current-input;
+                    font-size: 14px;
+                    color: Theme.text-primary;
+                    single-line: true;
+                    
+                    accepted => {
+                        if (current-input != "") {
+                            send-message(current-input);
+                            current-input = "";
+                        }
+                    }
+                }
+                
+                if current-input == "" : Text {
+                    x: 16px;
+                    y: 14px;
+                    text: "Ask the assistant...";
+                    color: Theme.text-muted;
+                    font-size: 14px;
+                }
+            }
+
+            Rectangle {
+                width: 48px;
+                height: 48px;
+                background: current-input == "" ? Theme.surface : Theme.accent;
+                border-radius: 24px;
+                
+                TouchArea {
+                    clicked => {
+                        if (current-input != "") {
+                            send-message(current-input);
+                            current-input = "";
+                        }
+                    }
+                    
+                    Text {
+                        text: "↑";
+                        font-size: 20px;
+                        color: current-input == "" ? Theme.text-muted : Theme.text-primary;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        width: parent.width;
+                        height: parent.height;
+                    }
+                }
+            }
+        }
+    }
+}
